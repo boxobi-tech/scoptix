@@ -1,0 +1,16 @@
+# One-shot DB migrate + seed (full Docker stack only)
+
+FROM node:20-alpine
+
+WORKDIR /app
+
+RUN apk add --no-cache openssl postgresql-client
+
+COPY package.json package-lock.json ./
+COPY prisma ./prisma
+RUN npm ci
+COPY lib ./lib
+COPY scripts/docker-db-setup.sh ./scripts/docker-db-setup.sh
+RUN chmod +x ./scripts/docker-db-setup.sh
+
+CMD ["./scripts/docker-db-setup.sh"]

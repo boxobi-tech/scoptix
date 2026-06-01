@@ -1,0 +1,127 @@
+# SCOPTIX — Docker Compose
+#
+# Two workflows:
+#   1. Infrastructure only (hot reload):  npm run docker:infra  →  npm run dev:all
+#   2. Full stack in Docker:              bash docker-start.sh  or  npm run docker:up
+#
+# Local dev uses localhost URLs from .env (see .env.example).
+# App/worker containers override DATABASE_URL and REDIS_URL to use service names.
+
+name: scoptix
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: scoptix_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-recon}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-recon}
+      POSTGRES_DB: ${POSTGRES_DB:-recon}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - scoptix_pg:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-recon} -d ${POSTGRES_DB:-recon}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    container_name: scoptix_redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  setup:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: Dockerfile.setup
+    container_name: scoptix_setup
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-recon}:${POSTGRES_PASSWORD:-recon}@postgres:5432/${POSTGRES_DB:-recon}?schema=public
+    env_file:
+      - path: .env
+        required: false
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  app:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: scoptix_app
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      HOSTNAME: "0.0.0.0"
+      PORT: "3000"
+      DATABASE_URL: postgresql://${POSTGRES_USER:-recon}:${POSTGRES_PASSWORD:-recon}@postgres:5432/${POSTGRES_DB:-recon}?schema=public
+      REDIS_URL: redis://redis:6379
+    env_file:
+      - path: .env
+        required: false
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      setup:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://127.0.0.1:3000', (r) => process.exit(r.statusCode && r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  worker:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: scoptix_worker
+    restart: unless-stopped
+    command: ["npx", "tsx", "workers/scan-worker.ts"]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-recon}:${POSTGRES_PASSWORD:-recon}@postgres:5432/${POSTGRES_DB:-recon}?schema=public
+      REDIS_URL: redis://redis:6379
+    env_file:
+      - path: .env
+        required: false
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      setup:
+        condition: service_completed_successfully
+
+volumes:
+  scoptix_pg:
+    name: scoptix_pg

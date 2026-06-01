@@ -1,0 +1,253 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum EngineProvider {
+  VIRUSTOTAL
+  WAYBACK_MACHINE
+  URLSCAN
+}
+
+enum ScanJobStatus {
+  QUEUED
+  RUNNING
+  PAUSED
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum ScanPhase {
+  T1_APEX
+  T2_SUBDOMAINS
+  T3_WAYBACK_APEX
+  T4_WAYBACK_SUBDOMAINS
+  T5_CONSOLIDATE
+  T6_ANALYSIS
+}
+
+enum DeepScanState {
+  SKIPPED
+  PENDING
+  IN_PROGRESS
+  DONE
+  FAILED
+}
+
+enum FindingSource {
+  URL_STRING
+  RESPONSE_BODY
+}
+
+model TargetDomain {
+  id                   String                  @id @default(uuid())
+  domain               String
+  domainNormalized     String                  @unique @map("domain_normalized")
+  notes                String?
+  cachedUrlCount       Int                     @default(0) @map("cached_url_count")
+  cachedFindingCount   Int                     @default(0) @map("cached_finding_count")
+  cachedSubdomainCount Int                     @default(0) @map("cached_subdomain_count")
+  createdAt            DateTime                @default(now()) @map("created_at")
+  updatedAt            DateTime                @updatedAt @map("updated_at")
+  subdomains           Subdomain[]
+  scanJobs             ScanJob[]
+  discoveredUrls       DiscoveredUrl[]
+  analysisFindings     AnalysisFinding[]
+  observedSubdomains   ScanObservedSubdomain[]
+  observedUrls         ScanObservedUrl[]
+
+  @@map("target_domain")
+}
+
+model Subdomain {
+  id                 String                  @id @default(uuid())
+  targetDomainId     String                  @map("target_domain_id")
+  targetDomain       TargetDomain            @relation(fields: [targetDomainId], references: [id], onDelete: Cascade)
+  hostname           String
+  hostnameNormalized String                  @map("hostname_normalized")
+  firstSeenAt        DateTime                @default(now()) @map("first_seen_at")
+  lastSeenAt         DateTime                @updatedAt @map("last_seen_at")
+  sourceFlags        Json?                   @map("source_flags")
+  discoveredUrls     DiscoveredUrl[]
+  observedInScans    ScanObservedSubdomain[]
+  observedUrls       ScanObservedUrl[]
+
+  @@unique([targetDomainId, hostnameNormalized])
+  @@index([targetDomainId])
+  @@map("subdomain")
+}
+
+model ScanJob {
+  id                     String                  @id @default(uuid())
+  targetDomainId         String                  @map("target_domain_id")
+  targetDomain           TargetDomain            @relation(fields: [targetDomainId], references: [id], onDelete: Cascade)
+  status                 ScanJobStatus
+  phase                  ScanPhase?
+  progressCurrent        Int?                    @map("progress_current")
+  progressTotal          Int?                    @map("progress_total")
+  config                 Json
+  bullmqJobId            String?                 @map("bullmq_job_id")
+  errorMessage           String?                 @map("error_message")
+  startedAt              DateTime?               @map("started_at")
+  completedAt            DateTime?               @map("completed_at")
+  createdAt              DateTime                @default(now()) @map("created_at")
+  observedSubdomainCount Int?                    @map("observed_subdomain_count")
+  observedUrlCount       Int?                    @map("observed_url_count")
+  observedFindingCount   Int?                    @map("observed_finding_count")
+  observedVersion        Int?                    @map("observed_version")
+  discoveredUrls         DiscoveredUrl[]
+  analysisFindings       AnalysisFinding[]
+  observedSubdomains     ScanObservedSubdomain[]
+  observedUrls           ScanObservedUrl[]
+
+  @@index([targetDomainId, createdAt(sort: Desc)])
+  @@index([status])
+  @@map("scan_job")
+}
+
+model ExtensionCategory {
+  id             Int                   @id @default(autoincrement())
+  slug           String                @unique
+  displayName    String                @map("display_name")
+  suffixRules    ExtensionSuffixRule[]
+  discoveredUrls DiscoveredUrl[]
+  observedUrls   ScanObservedUrl[]
+
+  @@map("extension_category")
+}
+
+model ExtensionSuffixRule {
+  id                  Int               @id @default(autoincrement())
+  extensionCategoryId Int               @map("extension_category_id")
+  category            ExtensionCategory @relation(fields: [extensionCategoryId], references: [id], onDelete: Cascade)
+  suffix              String            @unique
+
+  @@map("extension_suffix_rule")
+}
+
+model DiscoveredUrl {
+  id                  String             @id @default(uuid())
+  targetDomainId      String             @map("target_domain_id")
+  targetDomain        TargetDomain       @relation(fields: [targetDomainId], references: [id], onDelete: Cascade)
+  subdomainId         String?            @map("subdomain_id")
+  subdomain           Subdomain?         @relation(fields: [subdomainId], references: [id], onDelete: SetNull)
+  scanJobId           String?            @map("scan_job_id")
+  scanJob             ScanJob?           @relation(fields: [scanJobId], references: [id], onDelete: SetNull)
+  urlText             String             @map("url_text")
+  urlSha256           String             @map("url_sha256") @db.Char(64)
+  engines             EngineProvider[]
+  extensionCategoryId Int?               @map("extension_category_id")
+  extensionCategory   ExtensionCategory? @relation(fields: [extensionCategoryId], references: [id], onDelete: SetNull)
+  pathnameExtension   String?            @map("pathname_extension")
+  deepScanState       DeepScanState      @default(SKIPPED) @map("deep_scan_state")
+  fetchedAt           DateTime?          @map("fetched_at")
+  contentStorageKey   String?            @map("content_storage_key")
+  contentLength       BigInt?            @map("content_length")
+  externalSeenAt      DateTime?          @map("external_seen_at")
+  createdAt           DateTime           @default(now()) @map("created_at")
+  findings            AnalysisFinding[]
+  observedInScans     ScanObservedUrl[]
+
+  @@unique([targetDomainId, urlSha256])
+  @@index([targetDomainId, createdAt(sort: Desc)])
+  @@index([subdomainId, createdAt(sort: Desc)])
+  @@index([extensionCategoryId])
+  @@map("discovered_url")
+}
+
+model AnalysisFinding {
+  id              String        @id @default(uuid())
+  discoveredUrlId String        @map("discovered_url_id")
+  discoveredUrl   DiscoveredUrl @relation(fields: [discoveredUrlId], references: [id], onDelete: Cascade)
+  targetDomainId  String        @map("target_domain_id")
+  targetDomain    TargetDomain  @relation(fields: [targetDomainId], references: [id], onDelete: Cascade)
+  scanJobId       String?       @map("scan_job_id")
+  scanJob         ScanJob?      @relation(fields: [scanJobId], references: [id], onDelete: SetNull)
+  source          FindingSource
+  findingType     String        @map("finding_type")
+  snippet         String?
+  metadata        Json?
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  @@index([discoveredUrlId])
+  @@index([targetDomainId])
+  @@index([targetDomainId, findingType])
+  @@index([findingType])
+  @@index([createdAt(sort: Desc)])
+  @@map("analysis_finding")
+}
+
+model ScanObservedSubdomain {
+  id                 String       @id @default(uuid())
+  scanJobId          String       @map("scan_job_id")
+  scanJob            ScanJob      @relation(fields: [scanJobId], references: [id], onDelete: Cascade)
+  targetDomainId     String       @map("target_domain_id")
+  targetDomain       TargetDomain @relation(fields: [targetDomainId], references: [id], onDelete: Cascade)
+  subdomainId        String?      @map("subdomain_id")
+  subdomain          Subdomain?   @relation(fields: [subdomainId], references: [id], onDelete: SetNull)
+  hostnameNormalized String       @map("hostname_normalized")
+  createdAt          DateTime     @default(now()) @map("created_at")
+
+  @@unique([scanJobId, hostnameNormalized])
+  @@index([targetDomainId])
+  @@index([scanJobId])
+  @@map("scan_observed_subdomain")
+}
+
+model ScanObservedUrl {
+  id                  String             @id @default(uuid())
+  scanJobId           String             @map("scan_job_id")
+  scanJob             ScanJob            @relation(fields: [scanJobId], references: [id], onDelete: Cascade)
+  targetDomainId      String             @map("target_domain_id")
+  targetDomain        TargetDomain       @relation(fields: [targetDomainId], references: [id], onDelete: Cascade)
+  discoveredUrlId     String?            @map("discovered_url_id")
+  discoveredUrl       DiscoveredUrl?     @relation(fields: [discoveredUrlId], references: [id], onDelete: SetNull)
+  subdomainId         String?            @map("subdomain_id")
+  subdomain           Subdomain?         @relation(fields: [subdomainId], references: [id], onDelete: SetNull)
+  hostnameNormalized  String             @map("hostname_normalized")
+  urlText             String             @map("url_text")
+  urlSha256           String             @map("url_sha256") @db.Char(64)
+  pathnameExtension   String?            @map("pathname_extension")
+  extensionCategoryId Int?               @map("extension_category_id")
+  extensionCategory   ExtensionCategory? @relation(fields: [extensionCategoryId], references: [id], onDelete: SetNull)
+  createdAt           DateTime           @default(now()) @map("created_at")
+
+  @@unique([scanJobId, urlSha256])
+  @@index([targetDomainId])
+  @@index([scanJobId])
+  @@index([scanJobId, hostnameNormalized])
+  @@map("scan_observed_url")
+}
+
+model ApiKey {
+  id              String         @id @default(uuid())
+  provider        EngineProvider
+  label           String
+  secretEncrypted String         @map("secret_encrypted")
+  proxyUrl        String?        @map("proxy_url")
+  usageCountDate    DateTime @map("usage_count_date") @db.Date
+  usageCount        Int      @default(0) @map("usage_count")
+  usageWeekKey      String   @map("usage_week_key")
+  usageCountWeekly  Int      @default(0) @map("usage_count_weekly")
+  usageMonthKey     String   @map("usage_month_key")
+  usageCountMonthly Int      @default(0) @map("usage_count_monthly")
+  isDisabled        Boolean  @default(false) @map("is_disabled")
+  lastUsedAt      DateTime?      @map("last_used_at")
+  createdAt       DateTime       @default(now()) @map("created_at")
+
+  @@index([provider, isDisabled])
+  @@map("api_key")
+}
+
+model AppSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("app_setting")
+}

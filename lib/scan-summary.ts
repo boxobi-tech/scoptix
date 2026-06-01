@@ -1,0 +1,385 @@
+import { ScanJobStatus } from "@prisma/client";
+import {
+  loadFindingsCompareDiff,
+  loadSubdomainsCompareDiff,
+  loadUrlsCompareDiff,
+} from "@/lib/scan-compare-diff";
+import type { ObservedAvailability } from "@/lib/scan-observed";
+import { prisma } from "@/lib/prisma";
+import {
+  resolveCategoryRankVisual,
+  resolveFindingRankVisual,
+  type RankVisual,
+  type SummaryRankIconKind,
+} from "@/lib/summary-rank-style";
+
+export type SummaryRankRow = {
+  label: string;
+  count: number;
+  change: string;
+  trend: "up" | "down" | "neutral";
+  barColor: string;
+  barWidthPercent: number;
+  iconBg: string;
+  iconColor: string;
+  iconStroke?: string;
+  barFill?: string;
+  barBackground?: string;
+  barShadow?: string;
+  icon: SummaryRankIconKind;
+};
+
+export type SummaryChangeLine = {
+  label: string;
+  value: string;
+  tone: "positive" | "negative" | "neutral";
+  icon: "globe" | "link" | "link-removed" | "finding";
+  dividerBefore?: boolean;
+};
+
+export type SummaryInterestingFinding = {
+  id: string;
+  findingType: string;
+  url: string;
+  description: string;
+};
+
+export type SummarySourceSlice = {
+  label: string;
+  count: number;
+  percent: number;
+  color: string;
+};
+
+export type ScanSummaryData = {
+  findingsTop10: SummaryRankRow[];
+  findingsTypeTotal: number;
+  urlCategoriesTop10: SummaryRankRow[];
+  urlCategoryTotal: number;
+  changes: {
+    baselineScanId: string | null;
+    baselineLabel: string | null;
+    lines: SummaryChangeLine[];
+  };
+  interestingFindings: SummaryInterestingFinding[];
+  sources: SummarySourceSlice[];
+  urlTotalForSources: number;
+};
+
+function formatDelta(current: number, previous: number | undefined) {
+  if (previous === undefined) return { change: "0", trend: "neutral" as const };
+  const delta = current - previous;
+  if (delta === 0) return { change: "0", trend: "neutral" as const };
+  if (delta > 0) return { change: `+${delta.toLocaleString()}`, trend: "up" as const };
+  return { change: delta.toLocaleString(), trend: "down" as const };
+}
+
+/** Bar length vs highest count in the same top-10 list (rank #1 = 100%). */
+function barWidth(count: number, max: number) {
+  if (max <= 0 || count <= 0) return 0;
+  return Math.round((count / max) * 100);
+}
+
+function buildRankRows(
+  items: { label: string; count: number }[],
+  previousByLabel: Map<string, number>,
+  visualFor: (label: string, index: number) => RankVisual,
+): SummaryRankRow[] {
+  const max = items[0]?.count ?? 0;
+  return items.map((item, index) => {
+    const { change, trend } = formatDelta(item.count, previousByLabel.get(item.label));
+    const visual = visualFor(item.label, index);
+    return {
+      label: item.label,
+      count: item.count,
+      change,
+      trend,
+      barColor: visual.barColor,
+      barFill: visual.barFill,
+      barBackground: visual.barBackground,
+      barShadow: visual.barShadow,
+      barWidthPercent: barWidth(item.count, max),
+      iconBg: visual.iconBg,
+      iconColor: visual.iconColor,
+      iconStroke: visual.iconStroke,
+      icon: visual.icon,
+    };
+  });
+}
+
+function formatEngineLabel(engine: string) {
+  if (engine === "VIRUSTOTAL") return "VirusTotal";
+  if (engine === "WAYBACK_MACHINE") return "Wayback Machine";
+  if (engine === "URLSCAN") return "URLScan";
+  return engine;
+}
+
+/** Donut segment colors aligned with sampleimg.png (green Wayback, purple VT). */
+const SOURCE_COLORS = ["#22c55e", "#9333ea", "#3b82f6", "#f59e0b"];
+
+export async function loadScanSummary(
+  scanId: string,
+  targetDomainId: string,
+  availability: ObservedAvailability,
+  scanCompletedAt: Date | null,
+): Promise<ScanSummaryData> {
+  const observedUrlModel = (
+    prisma as typeof prisma & {
+      scanObservedUrl: {
+        groupBy: (args: Record<string, unknown>) => Promise<
+          { extensionCategoryId: number | null; _count: { _all: number } }[]
+        >;
+        findMany: (args: Record<string, unknown>) => Promise<
+          {
+            id: string;
+            discoveredUrl: { engines: string[] } | null;
+          }[]
+        >;
+      };
+    }
+  ).scanObservedUrl;
+
+  const previousScan = await prisma.scanJob.findFirst({
+    where: {
+      targetDomainId,
+      status: ScanJobStatus.COMPLETED,
+      id: { not: scanId },
+      ...(scanCompletedAt ? { completedAt: { lt: scanCompletedAt } } : {}),
+    },
+    orderBy: [{ completedAt: "desc" }, { createdAt: "desc" }],
+    select: { id: true, completedAt: true, createdAt: true },
+  });
+
+  const [findingGroups, urlCategoryGroups, categories, interestingFindings] =
+    await Promise.all([
+      prisma.analysisFinding.groupBy({
+        by: ["findingType"],
+        where: { scanJobId: scanId },
+        _count: { _all: true },
+        orderBy: { _count: { findingType: "desc" } },
+      }),
+      availability.urls === "ready"
+        ? observedUrlModel.groupBy({
+            by: ["extensionCategoryId"],
+            where: { scanJobId: scanId },
+            _count: { _all: true },
+          })
+        : Promise.resolve([]),
+      prisma.extensionCategory.findMany({
+        select: { id: true, slug: true, displayName: true },
+      }),
+      prisma.analysisFinding.findMany({
+        where: { scanJobId: scanId },
+        orderBy: { createdAt: "desc" },
+        take: 40,
+        include: {
+          discoveredUrl: { select: { urlText: true } },
+        },
+      }),
+    ]);
+
+  const previousFindingGroups = previousScan
+    ? await prisma.analysisFinding.groupBy({
+        by: ["findingType"],
+        where: { scanJobId: previousScan.id },
+        _count: { _all: true },
+      })
+    : [];
+
+  const previousUrlGroups =
+    previousScan && availability.urls === "ready"
+      ? await observedUrlModel.groupBy({
+          by: ["extensionCategoryId"],
+          where: { scanJobId: previousScan.id },
+          _count: { _all: true },
+        })
+      : [];
+
+  const categoryById = new Map(categories.map((c) => [c.id, c]));
+  const previousFindingsByType = new Map(
+    previousFindingGroups.map((g) => [g.findingType, g._count._all]),
+  );
+
+  const findingsItems = findingGroups.slice(0, 10).map((g) => ({
+    label: g.findingType,
+    count: g._count._all,
+  }));
+  const findingsTop10 = buildRankRows(
+    findingsItems,
+    previousFindingsByType,
+    resolveFindingRankVisual,
+  );
+  const findingsTypeTotal = findingGroups.length;
+
+  const urlCategoryItems = urlCategoryGroups
+    .map((row) => {
+      const cat = row.extensionCategoryId
+        ? categoryById.get(row.extensionCategoryId)
+        : null;
+      return {
+        label: cat?.displayName ?? "Uncategorized",
+        count: row._count._all,
+      };
+    })
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10);
+
+  const previousUrlByLabel = new Map<string, number>();
+  for (const row of previousUrlGroups) {
+    const cat = row.extensionCategoryId ? categoryById.get(row.extensionCategoryId) : null;
+    const label = cat?.displayName ?? "Uncategorized";
+    previousUrlByLabel.set(label, row._count._all);
+  }
+
+  const urlCategoriesTop10 = buildRankRows(
+    urlCategoryItems.map(({ label, count }) => ({ label, count })),
+    previousUrlByLabel,
+    resolveCategoryRankVisual,
+  );
+  const urlCategoryTotal = urlCategoryGroups.length;
+
+  const changes: ScanSummaryData["changes"] = {
+    baselineScanId: previousScan?.id ?? null,
+    baselineLabel: previousScan
+      ? (previousScan.completedAt ?? previousScan.createdAt).toISOString().slice(0, 10)
+      : null,
+    lines: [],
+  };
+
+  if (previousScan) {
+    const baselineAvailability = { findings: "ready" as const, subdomains: availability.subdomains, urls: availability.urls };
+    const [findingsDiff, subdomainsDiff, urlsDiff] = await Promise.all([
+      loadFindingsCompareDiff(previousScan.id, scanId, 500),
+      loadSubdomainsCompareDiff(
+        previousScan.id,
+        scanId,
+        500,
+        availability,
+        baselineAvailability,
+      ),
+      loadUrlsCompareDiff(previousScan.id, scanId, 500, availability, baselineAvailability),
+    ]);
+
+    const pushLine = (line: SummaryChangeLine) => changes.lines.push(line);
+
+    if (subdomainsDiff.comparable) {
+      pushLine({
+        label: "New Subdomains",
+        value: `+${subdomainsDiff.summary.added.toLocaleString()}`,
+        tone: "positive",
+        icon: "globe",
+      });
+    }
+
+    if (urlsDiff.comparable) {
+      pushLine({
+        label: "New URLs",
+        value: `+${urlsDiff.summary.added.toLocaleString()}`,
+        tone: "positive",
+        icon: "link",
+      });
+    }
+
+    const dividerBeforeRemoved = changes.lines.length > 0;
+
+    if (subdomainsDiff.comparable) {
+      pushLine({
+        label: "Removed Subdomains",
+        value:
+          subdomainsDiff.summary.removed > 0
+            ? `-${subdomainsDiff.summary.removed.toLocaleString()}`
+            : "0",
+        tone: "negative",
+        icon: "globe",
+        dividerBefore: dividerBeforeRemoved,
+      });
+    }
+
+    if (urlsDiff.comparable) {
+      pushLine({
+        label: "Removed URLs",
+        value:
+          urlsDiff.summary.removed > 0
+            ? `-${urlsDiff.summary.removed.toLocaleString()}`
+            : "0",
+        tone: "negative",
+        icon: "link-removed",
+        dividerBefore: dividerBeforeRemoved && !subdomainsDiff.comparable,
+      });
+    }
+
+    if (findingsDiff.comparable) {
+      pushLine({
+        label: "New Findings",
+        value: `+${findingsDiff.summary.added.toLocaleString()}`,
+        tone: "positive",
+        icon: "finding",
+        dividerBefore: changes.lines.length > 0,
+      });
+    }
+  }
+
+  const priorityPattern =
+    /credential|password|jwt|token|api.?key|secret|private.?key|ssh/i;
+  const interesting = interestingFindings
+    .filter((f) => f.snippet || priorityPattern.test(f.findingType))
+    .sort((a, b) => {
+      const ap = priorityPattern.test(a.findingType) ? 1 : 0;
+      const bp = priorityPattern.test(b.findingType) ? 1 : 0;
+      return bp - ap;
+    })
+    .slice(0, 5)
+    .map((f) => ({
+      id: f.id,
+      findingType: f.findingType,
+      url: f.discoveredUrl.urlText,
+      description: f.snippet
+        ? f.snippet.length > 80
+          ? `${f.snippet.slice(0, 80)}…`
+          : f.snippet
+        : `${f.findingType} detected`,
+    }));
+
+  const engineCounts = new Map<string, number>();
+  if (availability.urls === "ready") {
+    const urlRows = await observedUrlModel.findMany({
+      where: { scanJobId: scanId },
+      select: {
+        id: true,
+        discoveredUrl: { select: { engines: true } },
+      },
+      take: 50_000,
+    });
+    for (const row of urlRows) {
+      const engines = row.discoveredUrl?.engines ?? [];
+      if (engines.length === 0) {
+        engineCounts.set("Unknown", (engineCounts.get("Unknown") ?? 0) + 1);
+      } else {
+        for (const engine of engines) {
+          const label = formatEngineLabel(engine);
+          engineCounts.set(label, (engineCounts.get(label) ?? 0) + 1);
+        }
+      }
+    }
+  }
+
+  const sourceEntries = [...engineCounts.entries()].sort((a, b) => b[1] - a[1]);
+  const urlTotalForSources = sourceEntries.reduce((s, [, n]) => s + n, 0);
+  const sources: SummarySourceSlice[] = sourceEntries.slice(0, 4).map(([label, count], i) => ({
+    label,
+    count,
+    percent: urlTotalForSources ? Math.round((count / urlTotalForSources) * 1000) / 10 : 0,
+    color: SOURCE_COLORS[i % SOURCE_COLORS.length],
+  }));
+
+  return {
+    findingsTop10,
+    findingsTypeTotal,
+    urlCategoriesTop10,
+    urlCategoryTotal,
+    changes,
+    interestingFindings: interesting,
+    sources,
+    urlTotalForSources,
+  };
+}
