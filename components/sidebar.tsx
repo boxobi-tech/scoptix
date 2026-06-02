@@ -4,7 +4,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState, type ComponentType } from "react";
-import { SidebarNewScanItem } from "@/components/sidebar-new-scan-item";
 import { useTheme } from "@/components/theme-provider";
 import {
   IconArrowUpDown,
@@ -123,7 +122,6 @@ export function Sidebar() {
     },
     {
       title: "Scans",
-      afterTitle: <SidebarNewScanItem classic={classic} />,
       items: [
         {
           href: "/scans",

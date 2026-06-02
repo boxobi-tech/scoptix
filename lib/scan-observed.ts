@@ -15,6 +15,7 @@ export type ObservedScanSummary = Prisma.ScanJobGetPayload<{
       select: {
         id: true;
         domainNormalized: true;
+        cachedSubdomainCount: true;
       };
     };
   };
@@ -40,6 +41,7 @@ export async function getObservedScanSummary(scanId: string) {
         select: {
           id: true,
           domainNormalized: true,
+          cachedSubdomainCount: true,
         },
       },
     },

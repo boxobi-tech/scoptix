@@ -13,7 +13,7 @@ export type ScanMetric = {
 
 export function ScanMetricCards({ metrics }: { metrics: ScanMetric[] }) {
   return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-6">
       {metrics.map((metric) => {
         const Icon = metric.icon;
         return (

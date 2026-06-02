@@ -9,6 +9,7 @@ import {
   IconFolder,
   IconGlobe,
   IconLink,
+  IconList,
 } from "@/components/ui-icons";
 import { ScanComparePanel } from "@/components/scan-compare-panel";
 import { ScanDetailHeader } from "@/components/scans/scan-detail-header";
@@ -74,6 +75,11 @@ function countLabel(value: number | null) {
   return value == null ? "—" : value.toLocaleString();
 }
 
+function dualCountLabel(numerator: number | null, denominator: number | null) {
+  if (numerator == null || denominator == null) return "—";
+  return `${numerator.toLocaleString()} / ${denominator.toLocaleString()}`;
+}
+
 function formatEngineLabel(engine: string) {
   if (engine === "VIRUSTOTAL") return "VirusTotal";
   if (engine === "WAYBACK_MACHINE") return "Wayback";
@@ -120,6 +126,7 @@ export default async function ScanObservedPage({
   const tabRaw = (sp(rawSp.tab) || "summary").toLowerCase();
   const compareId = sp(rawSp.compare) || undefined;
   const compareSubTabRaw = sp(rawSp.cmpTab) || "findings";
+  const subAll = sp(rawSp.subAll) === "1";
   const tab =
     tabRaw === "findings" ||
     tabRaw === "subdomains" ||
@@ -280,6 +287,7 @@ export default async function ScanObservedPage({
 
   const basePath = `/scans/${id}/observed`;
   const fixedParams: Record<string, string> = { tab };
+  if (tab === "subdomains" && subAll) fixedParams.subAll = "1";
   const isCompleted = scan.status === ScanJobStatus.COMPLETED;
   const showPartialNotice = scan.status !== ScanJobStatus.COMPLETED;
 
@@ -370,12 +378,14 @@ export default async function ScanObservedPage({
   const subdomainsWhere = { scanJobId: id } as const;
   const subdomainsTotal =
     tab === "subdomains" && availability.subdomains === "ready"
-      ? await observedSubdomainModel.count({ where: subdomainsWhere })
+      ? subAll
+        ? scan.targetDomain.cachedSubdomainCount
+        : await observedSubdomainModel.count({ where: subdomainsWhere })
       : 0;
   const subdomainsPages = Math.max(1, Math.ceil(subdomainsTotal / perPage));
   const safeSubdomainsPage = Math.min(page, subdomainsPages);
   const subdomains =
-    tab === "subdomains" && availability.subdomains === "ready"
+    tab === "subdomains" && availability.subdomains === "ready" && !subAll
       ? await observedSubdomainModel.findMany({
           where: subdomainsWhere,
           orderBy: { hostnameNormalized: "asc" },
@@ -388,6 +398,27 @@ export default async function ScanObservedPage({
                 firstSeenAt: true,
                 lastSeenAt: true,
               },
+            },
+          },
+        })
+      : [];
+
+  const allSubdomains =
+    tab === "subdomains" && availability.subdomains === "ready" && subAll
+      ? await prisma.subdomain.findMany({
+          where: { targetDomainId: scan.targetDomainId },
+          orderBy: { hostnameNormalized: "asc" },
+          skip: (safeSubdomainsPage - 1) * perPage,
+          take: perPage,
+          select: {
+            id: true,
+            hostnameNormalized: true,
+            firstSeenAt: true,
+            lastSeenAt: true,
+            observedUrls: {
+              where: { scanJobId: id },
+              select: { id: true },
+              take: 1,
             },
           },
         })
@@ -498,7 +529,7 @@ export default async function ScanObservedPage({
       label: "Subdomains",
       icon: IconGlobe,
       href: tabHref("subdomains"),
-      count: countLabel(observedSubdomainCount),
+      count: dualCountLabel(observedSubdomainCount, scan.targetDomain.cachedSubdomainCount),
     },
     {
       key: "urls",
@@ -526,7 +557,14 @@ export default async function ScanObservedPage({
       iconBg: "scx-metric-icon-badge--success",
       iconColor: "",
       value: countLabel(observedSubdomainCount),
-      label: "Subdomains",
+      label: "Subdomains (with URLs)",
+    },
+    {
+      icon: IconList,
+      iconBg: "scx-metric-icon-badge--success",
+      iconColor: "",
+      value: scan.targetDomain.cachedSubdomainCount.toLocaleString(),
+      label: "Subdomains (total)",
     },
     {
       icon: IconLink,
@@ -537,7 +575,7 @@ export default async function ScanObservedPage({
     },
     {
       icon: IconAlertTriangle,
-      iconBg: "scx-metric-icon-badge--danger",
+      iconBg: "scx-metric-icon-badge--success",
       iconColor: "",
       value: countLabel(observedFindingCount),
       label: "Findings",
@@ -582,6 +620,14 @@ export default async function ScanObservedPage({
     if (nextSource) q.set("fSource", nextSource);
     const nextPage = overrides.page ?? "1";
     if (nextPage !== "1") q.set("page", nextPage);
+    return `${basePath}?${q.toString()}`;
+  }
+
+  function subdomainModeHref(nextAll: boolean) {
+    const q = new URLSearchParams();
+    q.set("tab", "subdomains");
+    q.set("perPage", String(perPage));
+    if (nextAll) q.set("subAll", "1");
     return `${basePath}?${q.toString()}`;
   }
 
@@ -644,10 +690,10 @@ export default async function ScanObservedPage({
                       key={item.key}
                       href={`${basePath}?${q.toString()}`}
                       className={[
-                        "rounded-lg border px-3 py-1.5 text-sm transition-colors",
+                        "rounded-lg border px-3 py-1.5 text-[12px] transition-colors",
                         compareSubTab === item.key
-                          ? "border-accent/40 bg-green-50 text-green-800"
-                          : "border-gray-200 text-muted hover:bg-gray-50",
+                          ? "border-accent bg-accent/20 text-cream shadow-glass ring-1 ring-accent/25"
+                          : "border-line text-muted hover:bg-[var(--nav-hover-bg)] hover:text-cream",
                       ].join(" ")}
                     >
                       {item.label}
@@ -825,11 +871,28 @@ export default async function ScanObservedPage({
           {tab === "subdomains" && (
             <div className="glass-panel overflow-hidden rounded-2xl">
               <div className="border-b border-line bg-[var(--table-header-bg)] px-5 py-4">
-                <div className="text-[13px] font-semibold text-cream">
-                  Subdomains observed in this scan
-                </div>
-                <div className="mt-1 text-[12px] text-muted">
-                  Unique hostnames captured for this scan snapshot.
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div className="text-[13px] font-semibold text-cream">
+                      {subAll ? "All target subdomains" : "Subdomains with URLs in this scan"}
+                    </div>
+                    <div className="mt-1 text-[12px] text-muted">
+                      {subAll
+                        ? "Complete subdomain inventory for this target. Badges indicate whether each subdomain has an observed URL in this scan."
+                        : "Only subdomains that appear in the observed URL snapshot for this scan."}
+                    </div>
+                  </div>
+                  <Link
+                    href={subdomainModeHref(!subAll)}
+                    className={[
+                      "shrink-0 rounded-lg border px-3 py-1.5 text-[11px] transition-colors",
+                      !subAll
+                        ? "border-accent/60 bg-accent/10 text-cream"
+                        : "border-line text-muted hover:bg-[var(--nav-hover-bg)] hover:text-cream",
+                    ].join(" ")}
+                  >
+                    {subAll ? "With URLs" : "Show all"}
+                  </Link>
                 </div>
               </div>
 
@@ -846,11 +909,15 @@ export default async function ScanObservedPage({
                   </div>
 
                   <div className="divide-y divide-line">
-                    {subdomains.length === 0 ? (
+                    {!subAll && subdomains.length === 0 ? (
                       <div className="px-5 py-8 text-center text-[13px] text-muted">
                         No subdomains observed in this scan.
                       </div>
-                    ) : (
+                    ) : subAll && allSubdomains.length === 0 ? (
+                      <div className="px-5 py-8 text-center text-[13px] text-muted">
+                        No subdomains yet for this target.
+                      </div>
+                    ) : !subAll ? (
                       subdomains.map((subdomain) => (
                         <div
                           key={subdomain.id}
@@ -867,6 +934,40 @@ export default async function ScanObservedPage({
                           </div>
                         </div>
                       ))
+                    ) : (
+                      allSubdomains.map((subdomain) => {
+                        const hasUrl = subdomain.observedUrls.length > 0;
+                        return (
+                          <div
+                            key={subdomain.id}
+                            className="flex flex-col gap-1 px-5 py-3 sm:grid sm:grid-cols-12 sm:items-center sm:gap-3"
+                          >
+                            <div className="col-span-6 min-w-0">
+                              <div className="flex min-w-0 items-center gap-2">
+                                <div className="truncate font-mono text-[12px] text-cream">
+                                  {subdomain.hostnameNormalized}
+                                </div>
+                                <span
+                                  className={[
+                                    "relative -top-px shrink-0 rounded border px-1 py-0 text-[8px] font-semibold uppercase tracking-wide leading-none",
+                                    hasUrl
+                                      ? "border-accent/40 bg-accent/10 text-accent"
+                                      : "border-line bg-black/10 text-muted",
+                                  ].join(" ")}
+                                >
+                                  {hasUrl ? "Has URL" : "No URL"}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="col-span-3 font-mono text-[11px] text-muted">
+                              {formatDateTime(subdomain.firstSeenAt)}
+                            </div>
+                            <div className="col-span-3 text-left font-mono text-[11px] text-muted sm:text-right">
+                              {formatDateTime(subdomain.lastSeenAt)}
+                            </div>
+                          </div>
+                        );
+                      })
                     )}
                   </div>
 
