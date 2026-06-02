@@ -16,7 +16,9 @@ import { ScanDetailHeader } from "@/components/scans/scan-detail-header";
 import { ScanDetailTabs } from "@/components/scans/scan-detail-tabs";
 import { ScanMetricCards } from "@/components/scans/scan-metric-cards";
 import { ScanSummaryTab } from "@/components/scans/scan-summary-tab";
+import { SubdomainSearchBar } from "@/components/subdomain-search-bar";
 import { UrlFiltersToolbar } from "@/components/url-filters-toolbar";
+import { subdomainHostnameSearchWhere } from "@/lib/subdomain-search-query";
 import { urlExcludeWhere, normalizeExcludeKeywords } from "@/lib/url-exclude-query";
 import { urlTextSearchWhere } from "@/lib/url-search-query";
 import {
@@ -375,11 +377,20 @@ export default async function ScanObservedPage({
         })
       : [];
 
-  const subdomainsWhere = { scanJobId: id } as const;
+  const subdomainsSearchFilter = tab === "subdomains" ? subdomainHostnameSearchWhere(q) : undefined;
+  const subdomainsWhere = {
+    scanJobId: id,
+    ...(subdomainsSearchFilter ?? {}),
+  } as const;
   const subdomainsTotal =
     tab === "subdomains" && availability.subdomains === "ready"
       ? subAll
-        ? scan.targetDomain.cachedSubdomainCount
+        ? await prisma.subdomain.count({
+            where: {
+              targetDomainId: scan.targetDomainId,
+              ...(subdomainsSearchFilter ?? {}),
+            },
+          })
         : await observedSubdomainModel.count({ where: subdomainsWhere })
       : 0;
   const subdomainsPages = Math.max(1, Math.ceil(subdomainsTotal / perPage));
@@ -406,7 +417,10 @@ export default async function ScanObservedPage({
   const allSubdomains =
     tab === "subdomains" && availability.subdomains === "ready" && subAll
       ? await prisma.subdomain.findMany({
-          where: { targetDomainId: scan.targetDomainId },
+          where: {
+            targetDomainId: scan.targetDomainId,
+            ...(subdomainsSearchFilter ?? {}),
+          },
           orderBy: { hostnameNormalized: "asc" },
           skip: (safeSubdomainsPage - 1) * perPage,
           take: perPage,
@@ -426,6 +440,7 @@ export default async function ScanObservedPage({
 
   if (tab === "findings" && fType) fixedParams.fType = fType;
   if (tab === "findings" && fSource) fixedParams.fSource = fSource;
+  if (tab === "subdomains" && q?.trim()) fixedParams.q = q.trim();
 
   const urlSearchFilter = urlTextSearchWhere(q);
   const hideKw = normalizeExcludeKeywords(hideKwRaw);
@@ -882,17 +897,26 @@ export default async function ScanObservedPage({
                         : "Only subdomains that appear in the observed URL snapshot for this scan."}
                     </div>
                   </div>
-                  <Link
-                    href={subdomainModeHref(!subAll)}
-                    className={[
-                      "shrink-0 rounded-lg border px-3 py-1.5 text-[11px] transition-colors",
-                      !subAll
-                        ? "border-accent/60 bg-accent/10 text-cream"
-                        : "border-line text-muted hover:bg-[var(--nav-hover-bg)] hover:text-cream",
-                    ].join(" ")}
-                  >
-                    {subAll ? "With URLs" : "Show all"}
-                  </Link>
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <Link
+                      href={subdomainModeHref(!subAll)}
+                      className={[
+                        "shrink-0 rounded-lg border px-3 py-1.5 text-[11px] transition-colors",
+                        !subAll
+                          ? "border-accent/60 bg-accent/10 text-cream"
+                          : "border-line text-muted hover:bg-[var(--nav-hover-bg)] hover:text-cream",
+                      ].join(" ")}
+                    >
+                      {subAll ? "Only with URLs" : "Show all subdomains"}
+                    </Link>
+                    <SubdomainSearchBar
+                      basePath={basePath}
+                      perPage={perPage}
+                      subAll={subAll}
+                      initialQuery={q}
+                      size="sm"
+                    />
+                  </div>
                 </div>
               </div>
 

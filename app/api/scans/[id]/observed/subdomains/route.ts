@@ -6,6 +6,7 @@ import {
   normalizeTake,
 } from "@/lib/scan-observed";
 import { prisma } from "@/lib/prisma";
+import { subdomainHostnameSearchWhere } from "@/lib/subdomain-search-query";
 
 export const dynamic = "force-dynamic";
 
@@ -44,14 +45,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
 
   const where = {
     scanJobId: id,
-    ...(q
-      ? {
-          hostnameNormalized: {
-            contains: q.toLowerCase(),
-            mode: "insensitive" as const,
-          },
-        }
-      : {}),
+    ...(q ? (subdomainHostnameSearchWhere(q) ?? {}) : {}),
   };
 
   const [subdomains, total] = await Promise.all([
