@@ -162,7 +162,7 @@ export function ScanSummaryTab({
                 <div key={item.id} className="scx-summary-inner-item min-w-0 overflow-hidden">
                   <div className="flex min-w-0 items-start gap-3">
                     <span
-                      className="scx-finding-type-badge max-w-[38%] truncate"
+                      className="scx-finding-type-badge max-w-[38%] self-center truncate"
                       title={item.findingType}
                     >
                       {item.findingType}

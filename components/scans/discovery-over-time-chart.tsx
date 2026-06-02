@@ -118,8 +118,9 @@ function SingleScanSnapshot({ point }: { point: SummaryDiscoveryPoint }) {
   return (
     <div className="flex flex-1 flex-col justify-center gap-4">
       <p className="text-[12px] leading-relaxed text-muted">
-        One completed scan so far. Run another scan on this target to see how URLs and findings
-        change over time.
+        One completed scan so far.
+        <br />
+        Run another scan on this target to see how URLs and findings change over time.
       </p>
       <div className="grid grid-cols-2 gap-3">
         <div className="scx-summary-inner-item group relative overflow-hidden px-3 py-2.5">

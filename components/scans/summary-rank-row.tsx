@@ -80,7 +80,7 @@ export function SummaryRankRow({
 }) {
   return (
     <div
-      className={`${rankRowGridClass} border-b border-line/40 py-1.5 text-[12px] last:border-0`}
+      className={`${rankRowGridClass} border-b py-1.5 text-[12px] [border-bottom-color:color-mix(in_srgb,var(--color-line)_60%,transparent)] last:border-0`}
     >
       <div className="flex min-w-0 items-center">
         {showIcon ? (
@@ -152,7 +152,7 @@ export function SummaryRankTableHeader({
 }) {
   return (
     <div
-      className={`${rankRowGridClass} mb-1.5 border-b border-line pb-1.5 text-[10px] font-bold text-muted`}
+      className={`${rankRowGridClass} mb-1.5 border-b pb-1.5 text-[10px] font-bold text-muted [border-bottom-color:color-mix(in_srgb,var(--color-line)_60%,transparent)]`}
     >
       <span>{labelCol}</span>
       <span className="text-left">{countLabel}</span>
