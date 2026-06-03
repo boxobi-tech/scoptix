@@ -15,7 +15,6 @@ type QuickAction = {
   title: string;
   subtitle: string;
   Icon: ComponentType<{ className?: string }>;
-  primary?: boolean;
 };
 
 const QUICK_ACTIONS: QuickAction[] = [
@@ -24,7 +23,6 @@ const QUICK_ACTIONS: QuickAction[] = [
     title: "New scan",
     subtitle: "Start a scan",
     Icon: IconTerminal,
-    primary: true,
   },
   {
     href: "/findings",
@@ -52,12 +50,7 @@ function QuickActionTile({ action }: { action: QuickAction }) {
   return (
     <Link
       href={action.href}
-      className={[
-        "group flex h-full flex-col gap-3 rounded-xl p-4 pt-7 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
-        action.primary
-          ? "border border-accent/40 bg-gradient-to-br from-accent/20 to-accent/5 hover:border-accent/60 hover:shadow-lift"
-          : "border border-line bg-lift/50 hover:border-accent/35 hover:bg-[var(--nav-hover-bg)] hover:shadow-lift",
-      ].join(" ")}
+      className="group flex h-full flex-col gap-3 rounded-xl border border-line bg-lift/50 p-4 pt-7 transition-all hover:border-accent/35 hover:bg-[var(--nav-hover-bg)] hover:shadow-lift focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
     >
       <Icon className="size-8 shrink-0 text-accent transition-transform group-hover:scale-105" />
       <div>
