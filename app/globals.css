@@ -227,6 +227,85 @@ body {
     box-shadow: var(--shadow-lift);
   }
 
+  /* Main column shrinks when IP panel is open — layout adapts to available width, not viewport. */
+  .scx-main-shell {
+    container-type: inline-size;
+    container-name: main-shell;
+  }
+
+  .scx-metric-cards-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @container main-shell (min-width: 720px) {
+    .scx-metric-cards-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  @container main-shell (min-width: 960px) {
+    .scx-metric-cards-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
+  @container main-shell (min-width: 1280px) {
+    .scx-metric-cards-grid {
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+  }
+
+  .scx-metric-label {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
+
+  .scx-summary-layout-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  @container main-shell (min-width: 900px) {
+    .scx-summary-layout-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @container main-shell (min-width: 1280px) {
+    .scx-summary-layout-grid {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(280px, 355px);
+    }
+  }
+
+  .scx-scan-header-title {
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+  }
+
+  @container main-shell (max-width: 900px) {
+    .scx-scan-header-title {
+      font-size: 1.5rem;
+      line-height: 2rem;
+    }
+  }
+
+  .scx-target-stats-grid {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  @container main-shell (min-width: 560px) {
+    .scx-target-stats-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
   .scx-scan-header {
     @apply shrink-0 border-b px-6 py-4;
     background: var(--color-lift);

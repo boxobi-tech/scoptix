@@ -7,6 +7,30 @@ export function formatIpTableDateTime(value: Date | string | null | undefined) {
   return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
 }
 
+/** VirusTotal passive DNS style: `16 Jun 2024, 10:50:21` (UTC). */
+export function formatVtPassiveDnsDateTime(value: Date | string | null | undefined) {
+  if (!value) return "—";
+  const d = typeof value === "string" ? new Date(value) : value;
+  if (Number.isNaN(d.getTime())) return "—";
+  const day = d.getUTCDate();
+  const month = d.toLocaleString("en-GB", { month: "short", timeZone: "UTC" });
+  const year = d.getUTCFullYear();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${day} ${month} ${year}, ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
+}
+
+export function formatObservedHostnameCount(count: number) {
+  const n = Math.max(0, Math.floor(count));
+  return n === 1 ? "1 hostname" : `${n.toLocaleString()} hostnames`;
+}
+
+export function vtPassiveDnsIpBanner(hostnameCount: number) {
+  if (hostnameCount <= 1) {
+    return "This IP has been observed resolving to a single hostname in VirusTotal passive DNS data.";
+  }
+  return "This IP has been observed resolving to multiple hostnames in VirusTotal passive DNS data.";
+}
+
 export function formatHostnameCountLabel(count: number) {
   const n = Math.max(0, Math.floor(count));
   return n === 1 ? "1 subdomain" : `${n.toLocaleString()} subdomains`;

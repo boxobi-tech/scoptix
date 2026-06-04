@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { IpSightingPanel } from "@/components/ip-sighting-panel";
+import { useIpSightingPanel } from "@/components/ip-sighting-panel-provider";
 import {
   IpDirectoryTableHeader,
   IpDirectoryTableRow,
@@ -33,7 +32,7 @@ export function ScanIpsTab({
   isCompleted: boolean;
   sort: IpTableSort;
 }) {
-  const [selectedIpId, setSelectedIpId] = useState<string | null>(null);
+  const { openIpPanel } = useIpSightingPanel();
   const tableFixedParams = { tab: "ips", ...ipSortSearchParams(sort) };
 
   return (
@@ -62,7 +61,7 @@ export function ScanIpsTab({
               <IpDirectoryTableRow
                 key={ip.id}
                 row={ip}
-                onSelect={() => setSelectedIpId(ip.ipResolutionId)}
+                onSelect={() => ip.ipResolutionId && openIpPanel(ip.ipResolutionId)}
               />
             ))
           )}
@@ -77,11 +76,6 @@ export function ScanIpsTab({
           fixedParams={tableFixedParams}
         />
       </div>
-
-      <IpSightingPanel
-        ipResolutionId={selectedIpId}
-        onClose={() => setSelectedIpId(null)}
-      />
     </div>
   );
 }

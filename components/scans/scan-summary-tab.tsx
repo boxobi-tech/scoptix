@@ -19,9 +19,8 @@ const summaryFooterLinkClass =
 const cardEyebrowClass =
   "text-[10px] font-semibold uppercase tracking-[0.2em] text-accent";
 
-/** Fixed-width column for Changes / Sources; other columns grow with viewport. */
-const summaryFixedColGridClass =
-  "grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_355px]";
+/** Adapts column count via `.scx-summary-layout-grid` container queries on main shell. */
+const summaryLayoutGridClass = "scx-summary-layout-grid";
 
 function ChangeIcon({ icon, tone }: { icon: SummaryChangeLine["icon"]; tone: SummaryChangeLine["tone"] }) {
   const cls = "mr-3 size-4 shrink-0";
@@ -66,7 +65,7 @@ export function ScanSummaryTab({
 }) {
   return (
     <div className="space-y-4">
-      <div className={summaryFixedColGridClass}>
+      <div className={summaryLayoutGridClass}>
         <section className="scx-summary-card flex h-full flex-col">
           <h2 className={`mb-2.5 ${cardEyebrowClass}`}>Findings by Type (Top 10)</h2>
           <SummaryRankTableHeader labelCol="Type" countLabel="Count" />
@@ -144,7 +143,7 @@ export function ScanSummaryTab({
         </section>
       </div>
 
-      <div className={summaryFixedColGridClass}>
+      <div className={summaryLayoutGridClass}>
         <section className="scx-summary-card flex min-h-[260px] flex-col">
           <DiscoveryOverTimeChart points={data.discoveryTimeline} />
         </section>

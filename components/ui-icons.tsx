@@ -187,6 +187,24 @@ export function IconChevronRight({ className }: IconProps) {
   );
 }
 
+export function IconInfo({ className }: IconProps) {
+  return (
+    <IconBase className={className}>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 16v-4M12 8h.01" />
+    </IconBase>
+  );
+}
+
+export function IconCopy({ className }: IconProps) {
+  return (
+    <IconBase className={className}>
+      <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+    </IconBase>
+  );
+}
+
 export function IconArrowUp({ className }: IconProps) {
   return (
     <IconBase className={className}>

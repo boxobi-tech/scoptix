@@ -40,7 +40,7 @@ export function ScanDetailHeader({
         <div className="min-w-0 flex-1">
           <div className="mb-0.5 text-[11px] text-muted">Scan Summary</div>
           <div className="mb-3 flex items-center gap-3">
-            <h1 className="truncate text-3xl font-bold text-cream">{domain}</h1>
+            <h1 className="scx-scan-header-title truncate font-bold text-cream">{domain}</h1>
             <a
               href={`https://${domain}`}
               target="_blank"

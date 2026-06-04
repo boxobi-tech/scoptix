@@ -289,7 +289,7 @@ export default async function TargetDetailPage({
         </div>
 
         {/* ── Stats bar ── */}
-        <div className="mt-6 grid grid-cols-3 gap-3">
+        <div className="scx-target-stats-grid mt-6">
           <div className="glass-panel rounded-xl px-4 py-3 text-center">
             <div className="font-mono text-2xl text-cream">{target.cachedSubdomainCount.toLocaleString()}</div>
             <div className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-muted">Subdomains</div>

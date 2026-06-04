@@ -52,7 +52,7 @@ function SortHeaderButton({
       ].join(" ")}
       aria-label={`Sort by ${IP_SORT_FIELD_LABELS[field]}${active ? `, ${sort.dir === "asc" ? "ascending" : "descending"}` : ""}`}
     >
-      <span>{IP_SORT_FIELD_LABELS[field]}</span>
+      <span className="truncate">{IP_SORT_FIELD_LABELS[field]}</span>
       <SortIcon className={["size-3 shrink-0", active ? "text-accent" : "opacity-45"].join(" ")} />
     </Link>
   );
@@ -69,12 +69,20 @@ export function IpDirectoryTableHeader({
 }) {
   return (
     <>
-      <div className="hidden border-b border-line bg-[var(--table-header-bg)] px-5 py-2.5 text-[10px] font-semibold uppercase tracking-wider md:grid md:grid-cols-[3fr_2fr_3fr_3fr_1.75rem] md:items-center md:gap-3">
-        <SortHeaderButton field="ip" sort={sort} basePath={basePath} fixedParams={fixedParams} />
-        <SortHeaderButton field="hostnames" sort={sort} basePath={basePath} fixedParams={fixedParams} />
-        <SortHeaderButton field="lastResolved" sort={sort} basePath={basePath} fixedParams={fixedParams} />
-        <SortHeaderButton field="lastSeen" sort={sort} basePath={basePath} fixedParams={fixedParams} />
-        <div className="sr-only">Open</div>
+      <div className="hidden border-b border-line bg-[var(--table-header-bg)] px-5 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted md:grid md:grid-cols-12 md:items-center md:gap-3">
+        <div className="col-span-3">
+          <SortHeaderButton field="ip" sort={sort} basePath={basePath} fixedParams={fixedParams} />
+        </div>
+        <div className="col-span-2">
+          <SortHeaderButton field="hostnames" sort={sort} basePath={basePath} fixedParams={fixedParams} />
+        </div>
+        <div className="col-span-3">
+          <SortHeaderButton field="lastResolved" sort={sort} basePath={basePath} fixedParams={fixedParams} />
+        </div>
+        <div className="col-span-3">
+          <SortHeaderButton field="lastSeen" sort={sort} basePath={basePath} fixedParams={fixedParams} />
+        </div>
+        <div className="col-span-1" aria-hidden />
       </div>
 
       <div className="flex flex-wrap items-center gap-2 border-b border-line bg-[var(--table-header-bg)] px-5 py-2.5 md:hidden">
@@ -110,41 +118,22 @@ export function IpDirectoryTableRow({
     <button
       type="button"
       onClick={onSelect}
-      className="flex w-full flex-col gap-3 px-5 py-3 text-left transition-colors hover:bg-white/5 focus:outline-none focus-visible:bg-white/5 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/35 md:grid md:grid-cols-[3fr_2fr_3fr_3fr_1.75rem] md:items-center md:gap-3 md:gap-y-0"
+      className="flex w-full flex-col gap-1 px-5 py-3 text-left transition-colors hover:bg-white/5 focus:outline-none focus-visible:bg-white/5 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/35 md:grid md:grid-cols-12 md:items-center md:gap-3"
     >
-      <div className="min-w-0">
-        <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wider text-muted md:hidden">
-          IP Address
-        </span>
-        <div className="truncate font-mono text-[12px] text-cream">{row.ipAddress}</div>
+      <div className="col-span-3 min-w-0 truncate font-mono text-[12px] text-cream">{row.ipAddress}</div>
+      <div className="col-span-2 min-w-0 truncate text-[12px] text-muted">
+        {formatHostnameCountLabel(row.hostnameCount)}
       </div>
-
-      <div className="min-w-0">
-        <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wider text-muted md:hidden">
-          Historical Hostname
-        </span>
-        <div className="text-[12px] text-muted">{formatHostnameCountLabel(row.hostnameCount)}</div>
+      <div className="col-span-3 min-w-0 font-mono text-[11px] text-muted tabular-nums md:truncate">
+        {formatIpTableDateTime(row.lastResolvedAt)}
       </div>
-
-      <div className="min-w-0">
-        <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wider text-muted md:hidden">
-          Last Resolved
-        </span>
-        <div className="font-mono text-[11px] text-muted tabular-nums">
-          {formatIpTableDateTime(row.lastResolvedAt)}
-        </div>
+      <div
+        className="col-span-3 min-w-0 truncate font-mono text-[11px] text-cream"
+        title={row.lastSeenBy}
+      >
+        {row.lastSeenBy || "—"}
       </div>
-
-      <div className="min-w-0">
-        <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wider text-muted md:hidden">
-          Last Seen By
-        </span>
-        <div className="truncate font-mono text-[11px] text-cream" title={row.lastSeenBy}>
-          {row.lastSeenBy || "—"}
-        </div>
-      </div>
-
-      <div className="flex items-center justify-end text-muted md:justify-center">
+      <div className="col-span-1 flex items-center justify-end text-muted md:justify-center">
         <IconChevronRight className="size-4 shrink-0 opacity-60" aria-hidden />
       </div>
     </button>
