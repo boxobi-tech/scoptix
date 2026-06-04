@@ -337,6 +337,8 @@ async function processAndWriteUrls(
   globalProxy: string | null,
   urls: UrlInput[],
   engine: EngineProvider,
+  /** URLs already regex/deep-scanned in this scan job (VT then Wayback dedupe only). */
+  analyzedUrlHashesThisScan: Set<string>,
 ): Promise<void> {
   const merged = mergeUrlInputsForBatch(urls, targetNorm);
   if (merged.length === 0) return;
@@ -382,21 +384,6 @@ async function processAndWriteUrls(
     targetNorm,
     preparedRows,
   );
-
-  /** Wayback batches must not re-run regex/deep on URLs already on target (e.g. from VT), matching legacy single-pass T6 per unique URL. */
-  const preExistingWaybackSkip = new Set<string>();
-  if (engine === EngineProvider.WAYBACK_MACHINE) {
-    const uniqueHashes = [...new Set(preparedRows.map((r) => r.urlSha256))];
-    const HASH_LOOKUP_BATCH = 5000;
-    for (let i = 0; i < uniqueHashes.length; i += HASH_LOOKUP_BATCH) {
-      const slice = uniqueHashes.slice(i, i + HASH_LOOKUP_BATCH);
-      const existing = await prisma.discoveredUrl.findMany({
-        where: { targetDomainId, urlSha256: { in: slice } },
-        select: { urlSha256: true },
-      });
-      for (const e of existing) preExistingWaybackSkip.add(e.urlSha256);
-    }
-  }
 
   await prisma.scanJob.update({
     where: { id: scanJobId },
@@ -465,7 +452,7 @@ async function processAndWriteUrls(
     const du = urlIdMap.get(row.urlSha256);
     if (!du) continue;
 
-    if (engine === EngineProvider.WAYBACK_MACHINE && preExistingWaybackSkip.has(row.urlSha256)) continue;
+    if (analyzedUrlHashesThisScan.has(row.urlSha256)) continue;
 
     for (const hit of runSensitiveRegexScan(row.urlText)) {
       urlStringFindings.push({
@@ -518,6 +505,8 @@ async function processAndWriteUrls(
         data: { deepScanState: DeepScanState.FAILED },
       });
     }
+
+    analyzedUrlHashesThisScan.add(row.urlSha256);
   }
 
   if (urlStringFindings.length > 0) {
@@ -570,6 +559,7 @@ export async function runScanJob(prisma: PrismaClient, redis: Redis, scanJobId: 
   const targetNorm = target.domainNormalized;
   const suffixRules = await loadExtensionSuffixRules(prisma);
   const isSubdomainScan = cfg.inputType === "subdomain";
+  const analyzedUrlHashesThisScan = new Set<string>();
 
   /* ── B3: Pre-load extension categories (1 query instead of N) ── */
   const allCategories = await prisma.extensionCategory.findMany();
@@ -728,6 +718,7 @@ export async function runScanJob(prisma: PrismaClient, redis: Redis, scanJobId: 
       globalProxy,
       vtUrlList,
       EngineProvider.VIRUSTOTAL,
+      analyzedUrlHashesThisScan,
     );
   }
 
@@ -758,6 +749,7 @@ export async function runScanJob(prisma: PrismaClient, redis: Redis, scanJobId: 
       globalProxy,
       apexInputs,
       EngineProvider.WAYBACK_MACHINE,
+      analyzedUrlHashesThisScan,
     );
 
     if (!isSubdomainScan && vtEnabled && vtSubdomains.length > 0) {
@@ -792,6 +784,7 @@ export async function runScanJob(prisma: PrismaClient, redis: Redis, scanJobId: 
           globalProxy,
           subInputs,
           EngineProvider.WAYBACK_MACHINE,
+          analyzedUrlHashesThisScan,
         );
 
         if (shouldUpdateProgress(wIdx, vtSubdomains.length, 2)) {
