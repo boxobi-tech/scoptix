@@ -16,19 +16,29 @@ export function ScanMetricCards({
   layout = "grid",
 }: {
   metrics: ScanMetric[];
-  layout?: "grid" | "row";
+  /** `flex-equal`: satu baris, lebar sama, mengikuti lebar parent (findings table). */
+  layout?: "grid" | "row" | "flex-equal";
 }) {
+  const gridClass =
+    layout === "row"
+      ? "grid grid-cols-3 gap-3"
+      : layout === "flex-equal"
+        ? "flex w-full gap-4"
+        : "scx-metric-cards-grid";
+
   return (
-    <div className={layout === "row" ? "grid grid-cols-3 gap-3" : "scx-metric-cards-grid"}>
+    <div className={gridClass}>
       {metrics.map((metric) => {
         const Icon = metric.icon;
         const isRow = layout === "row";
+        const isFlexEqual = layout === "flex-equal";
         return (
           <div
             key={metric.label}
             className={[
               "scx-metric-card",
               isRow ? "flex-col items-center justify-center text-center" : "",
+              isFlexEqual ? "min-w-0 flex-1 basis-0" : "",
             ]
               .filter(Boolean)
               .join(" ")}

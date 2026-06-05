@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { IconPencil, IconTrash } from "@/components/nav-icons";
 import { PER_KEY_MONTHLY, PER_KEY_PER_DAY } from "@/lib/quota-constants";
+import type { SettingsInitialSnapshot } from "@/lib/settings-initial-snapshot";
 
 type KeyRow = {
   id: string;
@@ -51,16 +52,24 @@ export const SETTINGS_TAB_QUERY = {
   engines: "engines",
 } as const;
 
-export function SettingsClient() {
+export function SettingsClient({
+  initialSnapshot,
+}: {
+  initialSnapshot?: SettingsInitialSnapshot;
+}) {
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab");
   const tab: SettingsTab =
     tabParam === SETTINGS_TAB_QUERY.extensions ? "extensions" : "keys";
-  const [proxyUrl, setProxyUrl] = useState("");
-  const [keys, setKeys] = useState<KeyRow[]>([]);
-  const [cats, setCats] = useState<CatRow[]>([]);
-  const [activeEngines, setActiveEngines] = useState<string[]>([]);
-  const [draftEngines, setDraftEngines] = useState<string[]>([]);
+  const [proxyUrl, setProxyUrl] = useState(initialSnapshot?.proxyUrl ?? "");
+  const [keys, setKeys] = useState<KeyRow[]>(() => initialSnapshot?.keys ?? []);
+  const [cats, setCats] = useState<CatRow[]>(() => initialSnapshot?.cats ?? []);
+  const [activeEngines, setActiveEngines] = useState<string[]>(
+    () => initialSnapshot?.activeEngines ?? [],
+  );
+  const [draftEngines, setDraftEngines] = useState<string[]>(
+    () => initialSnapshot?.activeEngines ?? [],
+  );
   const [enginesErr, setEnginesErr] = useState<string | null>(null);
   const [label, setLabel] = useState("VT key");
   const [secret, setSecret] = useState("");

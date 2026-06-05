@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { PageHeader } from "@/components/page-header";
 import { TopBar } from "@/components/top-bar";
 import { SettingsClient } from "@/components/settings-client";
+import { loadSettingsInitialSnapshot } from "@/lib/settings-initial-snapshot";
 
 function SettingsFallback() {
   return (
@@ -11,7 +12,8 @@ function SettingsFallback() {
   );
 }
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+  const initialSnapshot = await loadSettingsInitialSnapshot();
   return (
     <>
       <TopBar breadcrumb="/ settings" />
@@ -19,7 +21,7 @@ export default function SettingsPage() {
         <PageHeader eyebrow="Configuration" title="Settings" />
         <div className="mt-8">
           <Suspense fallback={<SettingsFallback />}>
-            <SettingsClient />
+            <SettingsClient initialSnapshot={initialSnapshot} />
           </Suspense>
         </div>
       </main>

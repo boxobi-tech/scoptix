@@ -24,6 +24,21 @@ const RING_INNER = {
 const TEXTURE_PATTERN_ID = donutTexturePatternId("scx-donut");
 const CLIP_PATH_ID = donutClipPathId("scx-donut");
 
+const GRADIENT_135 = {
+  gradientUnits: "userSpaceOnUse" as const,
+  x1: 0,
+  y1: 0,
+  x2: SIZE,
+  y2: SIZE,
+};
+
+function segmentFill(label: string, fallbackColor: string, sourceGradients: boolean) {
+  if (!sourceGradients) return fallbackColor;
+  if (label === "Wayback Machine" || label === "Wayback") return "url(#scx-donut-green)";
+  if (label === "VirusTotal") return "url(#scx-donut-purple)";
+  return fallbackColor;
+}
+
 function polar(r: number, degFromTop: number) {
   const rad = ((degFromTop - 90) * Math.PI) / 180;
   return { x: CX + r * Math.cos(rad), y: CY + r * Math.sin(rad) };
@@ -84,6 +99,7 @@ export function AccentDonutChart({
   ring = "default",
   size = "md",
   texture = false,
+  sourceGradients = false,
 }: {
   slices: SummarySourceSlice[];
   total: number;
@@ -93,6 +109,8 @@ export function AccentDonutChart({
   size?: keyof typeof CHART_SIZE;
   /** Soft ripple overlay on ring segments. */
   texture?: boolean;
+  /** VT purple + Wayback green gradients (same as sources donut). */
+  sourceGradients?: boolean;
 }) {
   const innerR = RING_INNER[ring];
   const dim = CHART_SIZE[size];
@@ -108,7 +126,7 @@ export function AccentDonutChart({
     return {
       slice,
       path: donutSegmentPath(startDeg, endDeg, innerR),
-      fill: slice.color,
+      fill: segmentFill(slice.label, slice.color, sourceGradients),
     };
   });
 
@@ -125,6 +143,18 @@ export function AccentDonutChart({
       {hovered ? <DonutSliceTooltip slice={hovered} /> : null}
       <svg viewBox={`0 0 ${SIZE} ${SIZE}`} className="size-full" aria-hidden>
         <defs>
+          {sourceGradients ? (
+            <>
+              <linearGradient id="scx-donut-green" {...GRADIENT_135}>
+                <stop offset="0%" stopColor="#15803d" />
+                <stop offset="100%" stopColor="#22c55e" />
+              </linearGradient>
+              <linearGradient id="scx-donut-purple" {...GRADIENT_135}>
+                <stop offset="0%" stopColor="#7c3aed" />
+                <stop offset="100%" stopColor="#9333ea" />
+              </linearGradient>
+            </>
+          ) : null}
           <DonutCircleClip id={CLIP_PATH_ID} />
           {texture ? <DonutWaterPattern id={TEXTURE_PATTERN_ID} /> : null}
         </defs>

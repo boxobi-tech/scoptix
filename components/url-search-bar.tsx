@@ -75,18 +75,49 @@ export type UrlSearchBarHandle = {
 };
 
 type UrlSearchBarProps = {
-  hrefContext: UrlTabHrefContext;
-  preserve: UrlTabFilterParams;
   initialQuery: string;
   layout?: "default" | "inline";
-};
+  submitMode?: "navigate" | "form";
+  placeholder?: string;
+  dialogTitle?: string;
+  dialogDescription?: string;
+  isQueryActive?: (query: string) => boolean;
+} & (
+  | {
+      submitMode: "form";
+      hrefContext?: never;
+      preserve?: never;
+      buildHref?: never;
+    }
+  | {
+      submitMode?: "navigate";
+      hrefContext: UrlTabHrefContext;
+      preserve: UrlTabFilterParams;
+      buildHref?: never;
+    }
+  | {
+      submitMode?: "navigate";
+      buildHref: (query: string) => string;
+      hrefContext?: never;
+      preserve?: never;
+    }
+);
 
-export const UrlSearchBar = forwardRef<UrlSearchBarHandle, UrlSearchBarProps>(function UrlSearchBar({
-  hrefContext,
-  preserve,
-  initialQuery,
-  layout = "default",
-}, ref) {
+export const UrlSearchBar = forwardRef<UrlSearchBarHandle, UrlSearchBarProps>(function UrlSearchBar(
+  {
+    hrefContext,
+    preserve,
+    buildHref,
+    initialQuery,
+    layout = "default",
+    submitMode = "navigate",
+    placeholder = "Search URLs…",
+    dialogTitle = "Advanced URL search",
+    dialogDescription = "Combine keywords with AND (all must match) or OR (either group). Terms are quoted automatically.",
+    isQueryActive = isUrlSearchQueryActive,
+  },
+  ref,
+) {
   const router = useRouter();
   const dialogTitleId = useId();
   const [query, setQuery] = useState(initialQuery);
@@ -101,15 +132,19 @@ export const UrlSearchBar = forwardRef<UrlSearchBarHandle, UrlSearchBarProps>(fu
 
   const navigate = useCallback(
     (q: string) => {
+      if (buildHref) {
+        router.push(buildHref(q));
+        return;
+      }
       router.push(
-        buildUrlsTabHref(hrefContext, {
-          ...preserve,
+        buildUrlsTabHref(hrefContext!, {
+          ...preserve!,
           q,
           page: 1,
         }),
       );
     },
-    [router, hrefContext, preserve],
+    [router, hrefContext, preserve, buildHref],
   );
 
   function openBuilder() {
@@ -136,64 +171,57 @@ export const UrlSearchBar = forwardRef<UrlSearchBarHandle, UrlSearchBarProps>(fu
     const built = buildAdvancedSearchString(advRows);
     setQuery(built);
     closeBuilder();
-    navigate(built);
+    if (submitMode === "navigate") navigate(built);
   }
 
   function handleClear() {
     setQuery("");
     setAdvRows([{ id: "1", term: "", operator: "AND" }]);
-    navigate("");
+    if (submitMode === "navigate") navigate("");
   }
 
   function handleResetBuilder() {
     setAdvRows([{ id: newRowId(), term: "", operator: "AND" }]);
   }
 
-  const hasActiveFilter = initialQuery.trim().length > 0;
-  const filterApplied = isUrlSearchQueryActive(initialQuery);
+  const embedded = submitMode === "form";
+  const hasActiveFilter = embedded
+    ? query.trim().length > 0
+    : initialQuery.trim().length > 0;
+  const hintQuery = embedded ? query : initialQuery;
+  const filterApplied = isQueryActive(hintQuery);
   const showTooShortHint =
-    initialQuery.trim().length > 0 && !filterApplied && !isStructuredSearchQuery(initialQuery);
+    hintQuery.trim().length > 0 && !filterApplied && !isStructuredSearchQuery(hintQuery);
 
   const inline = layout === "inline";
 
-  return (
-    <div
-      className={
-        inline ? "flex min-w-0 flex-1 flex-col gap-2" : "flex flex-col items-end gap-2"
-      }
-    >
-      <form
-        onSubmit={handleSimpleSubmit}
-        className={
-          inline
-            ? "flex w-full min-w-0 flex-wrap items-center gap-2"
-            : "flex flex-wrap items-center justify-end gap-2"
-        }
-      >
-        <div className={inline ? "relative min-w-0 flex-1" : "relative"}>
-          <IconSearch className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
-          <input
-            name="q"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search URLs…"
-            aria-label="Search URLs"
-            className={[
-              "ui-input-field rounded-lg border border-line pl-8 pr-9 text-[12px] text-cream outline-none placeholder:text-muted focus:ring-1 focus:ring-accent/30",
-              inline ? "h-9 w-full min-w-0 py-0" : "w-[min(100%,280px)] py-2",
-            ].join(" ")}
-          />
-          <button
-            type="button"
-            onClick={openBuilder}
-            title="Advanced search builder"
-            aria-label="Open advanced search builder"
-            aria-expanded={builderOpen}
-            className="absolute right-1 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted transition-colors hover:bg-[var(--nav-hover-bg)] hover:text-accent"
-          >
-            <IconSliders className="h-3.5 w-3.5" />
-          </button>
-        </div>
+  const controls = (
+    <>
+      <div className={inline || embedded ? "relative min-w-0 flex-1" : "relative"}>
+        <IconSearch className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
+        <input
+          name={embedded ? "q" : undefined}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={placeholder}
+          aria-label={placeholder}
+          className={[
+            "ui-input-field rounded-lg border border-line pl-8 pr-9 text-[12px] text-cream outline-none placeholder:text-muted focus:ring-1 focus:ring-accent/30",
+            inline || embedded ? "h-9 w-full min-w-0 py-0" : "w-[min(100%,280px)] py-2",
+          ].join(" ")}
+        />
+        <button
+          type="button"
+          onClick={openBuilder}
+          title="Advanced search builder"
+          aria-label="Open advanced search builder"
+          aria-expanded={builderOpen}
+          className="absolute right-1 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted transition-colors hover:bg-[var(--nav-hover-bg)] hover:text-accent"
+        >
+          <IconSliders className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      {!embedded ? (
         <button
           type="submit"
           className={[
@@ -203,21 +231,43 @@ export const UrlSearchBar = forwardRef<UrlSearchBarHandle, UrlSearchBarProps>(fu
         >
           Search
         </button>
-        {hasActiveFilter && (
-          <button
-            type="button"
-            onClick={handleClear}
-            title="Clear search"
-            aria-label="Clear search"
-            className={[
-              "inline-flex shrink-0 items-center justify-center rounded-lg border border-line text-muted transition-colors hover:border-warn/40 hover:bg-warn/10 hover:text-warn",
-              inline ? "h-9 w-9 p-0" : "p-2",
-            ].join(" ")}
-          >
-            <IconX />
-          </button>
-        )}
-      </form>
+      ) : null}
+      {hasActiveFilter ? (
+        <button
+          type="button"
+          onClick={handleClear}
+          title="Clear search"
+          aria-label="Clear search"
+          className={[
+            "inline-flex shrink-0 items-center justify-center rounded-lg border border-line text-muted transition-colors hover:border-warn/40 hover:bg-warn/10 hover:text-warn",
+            inline || embedded ? "h-9 w-9 p-0" : "p-2",
+          ].join(" ")}
+        >
+          <IconX />
+        </button>
+      ) : null}
+    </>
+  );
+
+  const controlsClassName = inline || embedded
+    ? "flex w-full min-w-0 flex-wrap items-center gap-2"
+    : "flex flex-wrap items-center justify-end gap-2";
+
+  return (
+    <div
+      className={
+        inline || embedded
+          ? "flex min-w-0 flex-1 flex-col gap-2"
+          : "flex flex-col items-end gap-2"
+      }
+    >
+      {embedded ? (
+        <div className={controlsClassName}>{controls}</div>
+      ) : (
+        <form onSubmit={handleSimpleSubmit} className={controlsClassName}>
+          {controls}
+        </form>
+      )}
 
       {showTooShortHint && (
         <p
@@ -239,10 +289,10 @@ export const UrlSearchBar = forwardRef<UrlSearchBarHandle, UrlSearchBarProps>(fu
         <div className="border-b border-line px-5 py-4">
           <h2 id={dialogTitleId} className="flex items-center gap-2 text-[14px] font-semibold text-cream">
             <IconSliders className="text-accent" />
-            Advanced URL search
+            {dialogTitle}
           </h2>
           <p className="mt-1 text-[11px] text-muted">
-            Combine keywords with AND (all must match) or OR (either group). Terms are quoted automatically.
+            {dialogDescription}
           </p>
         </div>
 
