@@ -756,6 +756,30 @@ body {
       inset 0 1px 0 rgba(255, 255, 255, 0.98);
   }
 
+  .scx-category-icon-popover {
+    position: absolute;
+    left: 0;
+    top: calc(100% + 0.375rem);
+    z-index: 50;
+    width: 13.5rem;
+    overflow: hidden;
+    border-radius: 0.75rem;
+    border: 1px solid var(--color-line);
+    background: var(--color-lift);
+    box-shadow: var(--shadow-lift);
+  }
+
+  .scx-category-icon-popover--end {
+    left: auto;
+    right: 0;
+  }
+
+  [data-theme="dark"] .scx-category-icon-popover {
+    background: var(--color-panel);
+    border-color: var(--glass-panel-border);
+    box-shadow: var(--shadow-glass);
+  }
+
   .extension-add-category-panel {
     border-radius: 1rem;
     padding: 1.25rem;

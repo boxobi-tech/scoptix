@@ -1,7 +1,15 @@
 import "dotenv/config";
 
 import { EngineProvider } from "@prisma/client";
+import type { CategoryIconKey } from "../lib/category-icons";
 import { BUILTIN_EXTENSION_CATEGORIES } from "../lib/extension-category-labels";
+
+const BUILTIN_CATEGORY_ICON_KEYS: Record<string, CategoryIconKey> = {
+  js: "hash",
+  document: "file",
+  executable: "terminal",
+  other: "folder",
+};
 import { encryptSecretWithKey } from "../lib/encryption";
 import { resolveAppEncryptionKey } from "../lib/app-encryption";
 import { prisma } from "../lib/prisma";
@@ -15,10 +23,11 @@ async function main() {
   const cats = [...BUILTIN_EXTENSION_CATEGORIES];
 
   for (const c of cats) {
+    const iconKey = BUILTIN_CATEGORY_ICON_KEYS[c.slug] ?? "file";
     await prisma.extensionCategory.upsert({
       where: { slug: c.slug },
-      create: c,
-      update: { displayName: c.displayName },
+      create: { ...c, iconKey },
+      update: { displayName: c.displayName, iconKey },
     });
   }
 

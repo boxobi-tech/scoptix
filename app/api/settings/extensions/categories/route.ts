@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { CATEGORY_ICON_KEYS, DEFAULT_CATEGORY_ICON_KEY } from "@/lib/category-icons";
 import { prisma } from "@/lib/prisma";
 
 const createSchema = z.object({
@@ -9,6 +10,7 @@ const createSchema = z.object({
     .max(64)
     .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug: lowercase letters, numbers, hyphens only"),
   displayName: z.string().min(1).max(120),
+  iconKey: z.enum(CATEGORY_ICON_KEYS).optional(),
 });
 
 export async function POST(req: Request) {
@@ -24,6 +26,7 @@ export async function POST(req: Request) {
       data: {
         slug: parsed.data.slug,
         displayName: parsed.data.displayName,
+        iconKey: parsed.data.iconKey ?? DEFAULT_CATEGORY_ICON_KEY,
       },
     });
     return NextResponse.json({ category: row });

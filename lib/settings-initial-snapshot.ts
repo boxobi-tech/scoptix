@@ -19,6 +19,7 @@ export type SettingsInitialSnapshot = {
     id: number;
     slug: string;
     displayName: string;
+    iconKey: string | null;
     suffixRules: Array<{ id: number; suffix: string }>;
   }>;
   activeEngines: string[];
@@ -58,6 +59,7 @@ export async function loadSettingsInitialSnapshot(): Promise<SettingsInitialSnap
     id: c.id,
     slug: c.slug,
     displayName: c.displayName,
+    iconKey: c.iconKey,
     suffixRules: c.suffixRules.map((s) => ({ id: s.id, suffix: s.suffix })),
   }));
 

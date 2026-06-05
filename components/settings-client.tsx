@@ -3,7 +3,14 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { CategoryIconPicker } from "@/components/category-icon-picker";
 import { IconPencil, IconTrash } from "@/components/nav-icons";
+import {
+  DEFAULT_CATEGORY_ICON_KEY,
+  getCategoryIconComponent,
+  resolveCategoryIconKey,
+  type CategoryIconKey,
+} from "@/lib/category-icons";
 import { PER_KEY_MONTHLY, PER_KEY_PER_DAY } from "@/lib/quota-constants";
 import type { SettingsInitialSnapshot } from "@/lib/settings-initial-snapshot";
 
@@ -23,6 +30,7 @@ type CatRow = {
   id: number;
   slug: string;
   displayName: string;
+  iconKey: string | null;
   suffixRules: { id: number; suffix: string }[];
 };
 
@@ -78,10 +86,12 @@ export function SettingsClient({
   const [extErr, setExtErr] = useState<string | null>(null);
   const [newCatDisplay, setNewCatDisplay] = useState("");
   const [newCatSlug, setNewCatSlug] = useState("");
+  const [newCatIconKey, setNewCatIconKey] = useState<CategoryIconKey>(DEFAULT_CATEGORY_ICON_KEY);
   const [suffixInputs, setSuffixInputs] = useState<Record<number, string>>({});
   const [editingCatId, setEditingCatId] = useState<number | null>(null);
   const [editCatDisplay, setEditCatDisplay] = useState("");
   const [editCatSlug, setEditCatSlug] = useState("");
+  const [editCatIconKey, setEditCatIconKey] = useState<CategoryIconKey>(DEFAULT_CATEGORY_ICON_KEY);
 
   async function refresh() {
     setKeysErr(null);
@@ -251,12 +261,14 @@ export function SettingsClient({
         body: JSON.stringify({
           displayName: newCatDisplay.trim(),
           slug: newCatSlug.trim().toLowerCase(),
+          iconKey: newCatIconKey,
         }),
       });
       const j = await r.json().catch(() => null);
       if (!r.ok) throw new Error(j?.error ?? `HTTP ${r.status}`);
       setNewCatDisplay("");
       setNewCatSlug("");
+      setNewCatIconKey(DEFAULT_CATEGORY_ICON_KEY);
       await refresh();
     } catch (e) {
       setExtErr(e instanceof Error ? e.message : "Failed");
@@ -291,6 +303,7 @@ export function SettingsClient({
     setEditingCatId(c.id);
     setEditCatDisplay(c.displayName);
     setEditCatSlug(c.slug);
+    setEditCatIconKey(resolveCategoryIconKey(c.iconKey, c.slug));
     setExtErr(null);
   }
 
@@ -298,6 +311,7 @@ export function SettingsClient({
     setEditingCatId(null);
     setEditCatDisplay("");
     setEditCatSlug("");
+    setEditCatIconKey(DEFAULT_CATEGORY_ICON_KEY);
   }
 
   async function saveEditCategory(id: number) {
@@ -322,7 +336,7 @@ export function SettingsClient({
       const r = await fetch(`/api/settings/extensions/categories/${id}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ displayName, slug }),
+        body: JSON.stringify({ displayName, slug, iconKey: editCatIconKey }),
       });
       const j = await r.json().catch(() => null);
       if (!r.ok) throw new Error(j?.error ?? `HTTP ${r.status}`);
@@ -642,15 +656,15 @@ export function SettingsClient({
           <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-accent">Extension mapping</div>
           <div className="mt-2 max-w-3xl text-[13px] text-muted">
             New URLs from scans are tagged by pathname extension using these rules. Slug must be lowercase (e.g.{" "}
-            <span className="font-mono text-cream/80">archive</span>). Categories are listed A–Z by display name.
+            <span className="font-mono text-cream/80">archive</span>). Pick a sidebar icon per category so entries stay visually distinct. Categories are listed A–Z by display name.
           </div>
 
           {extErr ? <div className="mt-4 text-[12px] text-warn">{extErr}</div> : null}
 
           <div className="extension-add-category-panel mt-6">
             <div className="text-[11px] font-semibold uppercase tracking-wider text-muted">Add category</div>
-            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-              <div>
+            <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-end">
+              <div className="min-w-0 flex-1">
                 <div className="text-[11px] font-semibold uppercase tracking-wide text-muted">Display name</div>
                 <input
                   value={newCatDisplay}
@@ -659,7 +673,7 @@ export function SettingsClient({
                   className="extension-input-field mt-2 w-full rounded-xl px-4 py-3 text-[13px]"
                 />
               </div>
-              <div>
+              <div className="min-w-0 flex-1">
                 <div className="text-[11px] font-semibold uppercase tracking-wide text-muted">Slug</div>
                 <input
                   value={newCatSlug}
@@ -668,15 +682,21 @@ export function SettingsClient({
                   className="extension-input-field mt-2 w-full rounded-xl px-4 py-3 font-mono text-[12px]"
                 />
               </div>
+              <CategoryIconPicker
+                value={newCatIconKey}
+                onChange={setNewCatIconKey}
+                disabled={busy}
+                align="end"
+              />
+              <button
+                type="button"
+                onClick={() => void addCategory()}
+                disabled={!canAddCategory}
+                className="shadow-clay shrink-0 rounded-xl bg-gradient-to-r from-accent to-accent-dim px-6 py-3 text-[13px] font-semibold text-void disabled:opacity-60 lg:mb-0.5"
+              >
+                Add category
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => void addCategory()}
-              disabled={!canAddCategory}
-              className="shadow-clay mt-4 rounded-xl bg-gradient-to-r from-accent to-accent-dim px-6 py-3 text-[13px] font-semibold text-void disabled:opacity-60"
-            >
-              Add category
-            </button>
           </div>
 
           <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-2">
@@ -685,8 +705,8 @@ export function SettingsClient({
                 <div className="flex items-start justify-between gap-3">
                   {editingCatId === c.id ? (
                     <div className="min-w-0 flex-1 space-y-3">
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <div>
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                        <div className="min-w-0 flex-1">
                           <div className="text-[11px] font-semibold uppercase tracking-wide text-muted">Display name</div>
                           <input
                             value={editCatDisplay}
@@ -695,7 +715,7 @@ export function SettingsClient({
                             disabled={busy}
                           />
                         </div>
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <div className="text-[11px] font-semibold uppercase tracking-wide text-muted">Slug</div>
                           <input
                             value={editCatSlug}
@@ -704,6 +724,12 @@ export function SettingsClient({
                             disabled={busy}
                           />
                         </div>
+                        <CategoryIconPicker
+                          value={editCatIconKey}
+                          onChange={setEditCatIconKey}
+                          disabled={busy}
+                          align="end"
+                        />
                       </div>
                       <div className="flex flex-wrap gap-2">
                         <button
@@ -728,6 +754,16 @@ export function SettingsClient({
                     <>
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
+                          {(() => {
+                            const CatIcon = getCategoryIconComponent(
+                              resolveCategoryIconKey(c.iconKey, c.slug),
+                            );
+                            return (
+                              <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-line bg-white/[0.04] text-accent">
+                                <CatIcon className="size-4" />
+                              </span>
+                            );
+                          })()}
                           <h3 className="text-lg font-semibold tracking-tight text-cream">{c.displayName}</h3>
                           <span className="shrink-0 rounded-md bg-accent/10 px-1.5 py-0.5 font-mono text-[10px] font-medium text-accent">
                             {c.slug}

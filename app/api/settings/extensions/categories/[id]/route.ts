@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { CATEGORY_ICON_KEYS } from "@/lib/category-icons";
 import { prisma } from "@/lib/prisma";
 
 const patchSchema = z
@@ -11,9 +12,10 @@ const patchSchema = z
       .max(64)
       .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug: lowercase letters, numbers, hyphens only")
       .optional(),
+    iconKey: z.enum(CATEGORY_ICON_KEYS).optional(),
   })
-  .refine((d) => d.displayName !== undefined || d.slug !== undefined, {
-    message: "At least one of displayName or slug is required",
+  .refine((d) => d.displayName !== undefined || d.slug !== undefined || d.iconKey !== undefined, {
+    message: "At least one of displayName, slug, or iconKey is required",
   });
 
 function parseId(raw: string): number | null {
@@ -36,9 +38,10 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   const existing = await prisma.extensionCategory.findUnique({ where: { id } });
   if (!existing) return NextResponse.json({ error: "Category not found" }, { status: 404 });
 
-  const data: { displayName?: string; slug?: string } = {};
+  const data: { displayName?: string; slug?: string; iconKey?: string } = {};
   if (parsed.data.displayName !== undefined) data.displayName = parsed.data.displayName.trim();
   if (parsed.data.slug !== undefined) data.slug = parsed.data.slug.trim().toLowerCase();
+  if (parsed.data.iconKey !== undefined) data.iconKey = parsed.data.iconKey;
 
   if (data.slug !== undefined && data.slug !== existing.slug) {
     const clash = await prisma.extensionCategory.findUnique({ where: { slug: data.slug } });

@@ -5,16 +5,14 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { type ComponentType } from "react";
 import { useTheme } from "@/components/theme-provider";
+import { IconScans, IconTargets } from "@/components/nav-icons";
+import { getCategoryIconForCategory } from "@/lib/category-icons";
 import type { SidebarExtensionCategory } from "@/lib/extension-category";
 import {
+  IconAlertTriangle,
   IconCheckCircle,
-  IconFileText,
-  IconFolder,
   IconLayoutDashboard,
-  IconList,
   IconSettings,
-  IconShield,
-  IconTerminal,
 } from "@/components/ui-icons";
 
 type NavIcon = ComponentType<{ className?: string }>;
@@ -32,12 +30,6 @@ type NavSection = {
   items: NavItem[];
   afterTitle?: React.ReactNode;
 };
-
-function categoryIcon(slug: string): NavIcon {
-  if (slug.includes("archive")) return IconFolder;
-  if (slug.includes("exec")) return IconTerminal;
-  return IconFileText;
-}
 
 function SidebarLink({
   item,
@@ -98,10 +90,10 @@ export function Sidebar({ categories }: { categories: SidebarExtensionCategory[]
         {
           href: "/scans",
           label: "All Scans",
-          icon: IconList,
+          icon: IconScans,
           match: (p) => p === "/scans" || p.startsWith("/scans/"),
         },
-        { href: "/targets", label: "Targets", icon: IconList },
+        { href: "/targets", label: "Targets", icon: IconTargets },
       ],
     },
     {
@@ -110,7 +102,7 @@ export function Sidebar({ categories }: { categories: SidebarExtensionCategory[]
         {
           href: "/findings",
           label: "All Findings",
-          icon: IconShield,
+          icon: IconAlertTriangle,
           match: (p, sp) => p.startsWith("/findings") && !sp.get("urlCategory"),
         },
       ],
@@ -122,7 +114,7 @@ export function Sidebar({ categories }: { categories: SidebarExtensionCategory[]
             items: categories.map((c) => ({
               href: `/categories/${encodeURIComponent(c.slug)}`,
               label: c.displayName,
-              icon: categoryIcon(c.slug),
+              icon: getCategoryIconForCategory(c.iconKey, c.slug),
               match: (p: string, sp: URLSearchParams) =>
                 p === `/categories/${c.slug}` || p.startsWith(`/categories/${c.slug}/`),
             })),

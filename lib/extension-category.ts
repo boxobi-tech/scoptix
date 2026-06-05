@@ -9,13 +9,14 @@ export type SidebarExtensionCategory = {
   id: number;
   slug: string;
   displayName: string;
+  iconKey: string | null;
 };
 
 export async function loadSidebarExtensionCategories(
   prisma: PrismaClient,
 ): Promise<SidebarExtensionCategory[]> {
   return prisma.extensionCategory.findMany({
-    select: { id: true, slug: true, displayName: true },
+    select: { id: true, slug: true, displayName: true, iconKey: true },
     orderBy: [{ displayName: "asc" }, { slug: "asc" }],
   });
 }

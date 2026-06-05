@@ -120,6 +120,7 @@ model ExtensionCategory {
   id             Int                   @id @default(autoincrement())
   slug           String                @unique
   displayName    String                @map("display_name")
+  iconKey        String?               @map("icon_key")
   suffixRules    ExtensionSuffixRule[]
   discoveredUrls DiscoveredUrl[]
   observedUrls   ScanObservedUrl[]

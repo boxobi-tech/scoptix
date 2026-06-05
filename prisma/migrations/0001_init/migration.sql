@@ -73,6 +73,7 @@ CREATE TABLE "extension_category" (
     "id" SERIAL NOT NULL,
     "slug" TEXT NOT NULL,
     "display_name" TEXT NOT NULL,
+    "icon_key" TEXT,
 
     CONSTRAINT "extension_category_pkey" PRIMARY KEY ("id")
 );
@@ -116,7 +117,7 @@ CREATE TABLE "analysis_finding" (
     "source" "FindingSource" NOT NULL,
     "finding_type" TEXT NOT NULL,
     "snippet" TEXT,
-    "engines" "EngineProvider"[] NOT NULL DEFAULT ARRAY[]::"EngineProvider"[],
+    "engines" "EngineProvider"[] DEFAULT ARRAY[]::"EngineProvider"[],
     "metadata" JSONB,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -386,4 +387,3 @@ ALTER TABLE "scan_observed_ip_resolution" ADD CONSTRAINT "scan_observed_ip_resol
 
 -- AddForeignKey
 ALTER TABLE "scan_observed_ip_resolution" ADD CONSTRAINT "scan_observed_ip_resolution_ip_resolution_id_fkey" FOREIGN KEY ("ip_resolution_id") REFERENCES "ip_resolution"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-

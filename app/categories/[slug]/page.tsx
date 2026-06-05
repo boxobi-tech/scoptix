@@ -193,6 +193,7 @@ export default async function CategoryPage({
       <CategoryDetailHeader
         displayName={category.displayName}
         slug={category.slug}
+        iconKey={category.iconKey}
         totalUrls={totalUrls}
         uniqueTargets={uniqueTargets}
         uniqueScans={uniqueScans}
