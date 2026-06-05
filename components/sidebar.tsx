@@ -3,10 +3,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useEffect, useState, type ComponentType } from "react";
+import { type ComponentType } from "react";
 import { useTheme } from "@/components/theme-provider";
+import type { SidebarExtensionCategory } from "@/lib/extension-category";
 import {
-  IconArrowUpDown,
   IconCheckCircle,
   IconFileText,
   IconFolder,
@@ -16,12 +16,6 @@ import {
   IconShield,
   IconTerminal,
 } from "@/components/ui-icons";
-
-type ExtensionCategory = {
-  id: number;
-  slug: string;
-  displayName: string;
-};
 
 type NavIcon = ComponentType<{ className?: string }>;
 
@@ -81,30 +75,11 @@ function SidebarLink({
   );
 }
 
-export function Sidebar() {
+export function Sidebar({ categories }: { categories: SidebarExtensionCategory[] }) {
   const { theme } = useTheme();
   const classic = theme === "dark" || theme === "light-mist";
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [categories, setCategories] = useState<ExtensionCategory[]>([]);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      try {
-        const r = await fetch("/api/settings/extensions", { cache: "no-store" });
-        if (!r.ok) return;
-        const j = (await r.json()) as { categories?: ExtensionCategory[] };
-        if (!cancelled) setCategories(j.categories ?? []);
-      } catch {
-        /* ignore */
-      }
-    }
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const isActive = (item: NavItem) =>
     item.match?.(pathname, searchParams) ??
@@ -115,29 +90,18 @@ export function Sidebar() {
   const sections: NavSection[] = [
     {
       title: "Main",
-      items: [
-        { href: "/", label: "Dashboard", icon: IconLayoutDashboard },
-        { href: "/targets", label: "Targets", icon: IconList },
-      ],
+      items: [{ href: "/", label: "Dashboard", icon: IconLayoutDashboard }],
     },
     {
-      title: "Scans",
+      title: "Discovery",
       items: [
         {
           href: "/scans",
           label: "All Scans",
           icon: IconList,
-          match: (p) =>
-            p === "/scans" ||
-            (p.startsWith("/scans/") && !p.endsWith("/compare") && !p.includes("/compare?")),
+          match: (p) => p === "/scans" || p.startsWith("/scans/"),
         },
-        {
-          href: "/scans/compare",
-          label: "Scan Comparison",
-          icon: IconArrowUpDown,
-          rotateIcon: true,
-          match: (p) => p === "/scans/compare" || p.includes("/compare"),
-        },
+        { href: "/targets", label: "Targets", icon: IconList },
       ],
     },
     {

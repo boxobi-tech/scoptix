@@ -5,6 +5,21 @@ export type SuffixRule = {
   extensionCategoryId: number;
 };
 
+export type SidebarExtensionCategory = {
+  id: number;
+  slug: string;
+  displayName: string;
+};
+
+export async function loadSidebarExtensionCategories(
+  prisma: PrismaClient,
+): Promise<SidebarExtensionCategory[]> {
+  return prisma.extensionCategory.findMany({
+    select: { id: true, slug: true, displayName: true },
+    orderBy: [{ displayName: "asc" }, { slug: "asc" }],
+  });
+}
+
 export async function loadExtensionSuffixRules(
   prisma: PrismaClient,
 ): Promise<SuffixRule[]> {

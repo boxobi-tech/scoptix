@@ -1,23 +1,3 @@
-import { getObservedAvailability, getObservedScanSummary, normalizeTake } from "@/lib/scan-observed";
-
-export function normalizeCompareTake(raw: string | null) {
-  return normalizeTake(raw, 100, 500);
-}
-
-export async function loadCompareScans(leftId: string, rightId: string) {
-  const [leftScan, rightScan] = await Promise.all([
-    getObservedScanSummary(leftId),
-    getObservedScanSummary(rightId),
-  ]);
-
-  return {
-    leftScan,
-    rightScan,
-    leftAvailability: leftScan ? getObservedAvailability(leftScan) : null,
-    rightAvailability: rightScan ? getObservedAvailability(rightScan) : null,
-  };
-}
-
 export function compareByKey<T>(
   leftRows: T[],
   rightRows: T[],
