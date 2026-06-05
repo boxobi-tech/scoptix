@@ -1,8 +1,8 @@
 import Link from "next/link";
 import type { ComponentType } from "react";
+import { IconScans } from "@/components/nav-icons";
 import {
   IconAlertTriangle,
-  IconArrowLeftRight,
   IconGlobe,
   IconTerminal,
 } from "@/components/ui-icons";
@@ -31,10 +31,10 @@ const QUICK_ACTIONS: QuickAction[] = [
     Icon: IconAlertTriangle,
   },
   {
-    href: "/scans/compare",
-    title: "Compare scans",
-    subtitle: "See what changed",
-    Icon: IconArrowLeftRight,
+    href: "/scans",
+    title: "All scans",
+    subtitle: "Browse scan history",
+    Icon: IconScans,
   },
   {
     href: "/targets",
@@ -67,7 +67,7 @@ export function DashboardQuickActionsCard() {
       <h2 className={`mb-3 ${cardEyebrowClass}`}>Quick actions</h2>
       <div className="grid min-h-0 flex-1 grid-cols-2 gap-3">
         {QUICK_ACTIONS.map((action) => (
-          <QuickActionTile key={action.href} action={action} />
+          <QuickActionTile key={action.title} action={action} />
         ))}
       </div>
     </div>
