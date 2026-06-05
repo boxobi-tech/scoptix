@@ -6,7 +6,7 @@ import {
   isUrlExcludeActive,
   normalizeExcludeKeywords,
 } from "@/lib/url-exclude-query";
-import { buildUrlsTabHref, type UrlTabHrefContext, type UrlTabPreserve } from "@/lib/url-tab-params";
+import { buildUrlsTabHref, type UrlTabHrefContext, type UrlTabFilterParams } from "@/lib/url-tab-params";
 
 export type SubdomainOption = {
   id: string;
@@ -77,11 +77,12 @@ function IconTrash({ className }: { className?: string }) {
 
 type UrlExcludeBarProps = {
   hrefContext: UrlTabHrefContext;
-  preserve: UrlTabPreserve;
+  preserve: UrlTabFilterParams;
   initialHideSubIds: string[];
   initialHideKw: string[];
   subdomainOptions: SubdomainOption[];
   resolvedHiddenSubdomains: SubdomainOption[];
+  variant?: "labeled" | "icon";
 };
 
 export const UrlExcludeBar = forwardRef<UrlExcludeBarHandle, UrlExcludeBarProps>(function UrlExcludeBar({
@@ -91,6 +92,7 @@ export const UrlExcludeBar = forwardRef<UrlExcludeBarHandle, UrlExcludeBarProps>
   initialHideKw,
   subdomainOptions,
   resolvedHiddenSubdomains,
+  variant = "labeled",
 }, ref) {
   const router = useRouter();
   const dialogTitleId = useId();
@@ -224,26 +226,33 @@ export const UrlExcludeBar = forwardRef<UrlExcludeBarHandle, UrlExcludeBarProps>
   const excludeActive = isUrlExcludeActive(initialHideSubIds, initialHideKw);
   const kwTooShort = kwDraft.trim().length > 0 && kwDraft.trim().length < 2;
 
+  const iconOnly = variant === "icon";
+
   return (
-    <div className="flex flex-col items-end gap-2">
-      <div className="flex items-center gap-2">
+    <div className={iconOnly ? "flex shrink-0 items-center gap-2" : "flex flex-col items-end gap-2"}>
+      <div className={iconOnly ? "flex items-center gap-2" : "flex items-center gap-2"}>
         <button
           type="button"
           onClick={openModal}
           title="Hide URLs from results"
-          aria-label="Open hide URLs builder"
+          aria-label="Hide URLs from results"
           aria-expanded={modalOpen}
           className={[
-            "inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-[12px] font-medium transition-colors",
+            "inline-flex items-center transition-colors",
+            iconOnly
+              ? "h-9 w-9 shrink-0 justify-center rounded-lg border border-line p-0"
+              : "gap-1.5 rounded-lg border px-3 py-2 text-[12px] font-medium",
             excludeActive
-              ? "border-warn/40 bg-warn/10 text-cream hover:bg-warn/15"
-              : "border-line text-cream hover:bg-[var(--nav-hover-bg)]",
+              ? "border-warn/40 bg-warn/10 text-warn hover:bg-warn/15"
+              : iconOnly
+                ? "border-line text-muted hover:bg-[var(--nav-hover-bg)] hover:text-cream"
+                : "border-line text-cream hover:bg-[var(--nav-hover-bg)]",
           ].join(" ")}
         >
-          <IconEyeOff className={excludeActive ? "text-warn" : "text-muted"} />
-          Hide
+          <IconEyeOff className={excludeActive && !iconOnly ? "text-warn" : undefined} />
+          {!iconOnly ? "Hide" : null}
         </button>
-        {excludeActive && (
+        {excludeActive && !iconOnly && (
           <button
             type="button"
             onClick={handleClearApplied}

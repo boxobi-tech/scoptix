@@ -4,7 +4,7 @@ import { useMemo, useRef } from "react";
 import { UrlExcludeBar, type SubdomainOption, type UrlExcludeBarHandle } from "@/components/url-exclude-bar";
 import { UrlSearchBar, type UrlSearchBarHandle } from "@/components/url-search-bar";
 import { isUrlSearchQueryActive, parseUrlSearchGroups } from "@/lib/url-search-query";
-import type { UrlTabHrefContext, UrlTabPreserve } from "@/lib/url-tab-params";
+import type { UrlTabHrefContext, UrlTabFilterParams } from "@/lib/url-tab-params";
 
 function SummaryChip({
   label,
@@ -51,9 +51,11 @@ export function UrlFiltersToolbar({
   totalUrls,
   currentPage,
   totalPages,
+  showSummary = true,
+  integratedControls = false,
 }: {
   hrefContext: UrlTabHrefContext;
-  preserve: UrlTabPreserve;
+  preserve: UrlTabFilterParams;
   initialQuery: string;
   initialHideSubIds: string[];
   initialHideKw: string[];
@@ -62,6 +64,8 @@ export function UrlFiltersToolbar({
   totalUrls: number;
   currentPage: number;
   totalPages: number;
+  showSummary?: boolean;
+  integratedControls?: boolean;
 }) {
   const searchRef = useRef<UrlSearchBarHandle>(null);
   const hideRef = useRef<UrlExcludeBarHandle>(null);
@@ -83,27 +87,61 @@ export function UrlFiltersToolbar({
   return (
     <div className="space-y-3">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-        <div className="text-[12px] text-muted">
-          Total: <span className="font-mono text-cream">{totalUrls.toLocaleString()}</span> · Page{" "}
-          <span className="font-mono text-cream">{currentPage.toLocaleString()}</span>/
-          <span className="font-mono text-cream">{totalPages.toLocaleString()}</span>
-        </div>
-        <div className="flex flex-wrap items-start gap-2 lg:justify-end">
-          <UrlSearchBar
-            ref={searchRef}
-            hrefContext={hrefContext}
-            preserve={preserve}
-            initialQuery={initialQuery}
-          />
-          <UrlExcludeBar
-            ref={hideRef}
-            hrefContext={hrefContext}
-            preserve={preserve}
-            initialHideSubIds={initialHideSubIds}
-            initialHideKw={initialHideKw}
-            subdomainOptions={subdomainOptions}
-            resolvedHiddenSubdomains={resolvedHiddenSubdomains}
-          />
+        {showSummary ? (
+          <div className="text-[12px] text-muted">
+            Total: <span className="font-mono text-cream">{totalUrls.toLocaleString()}</span> · Page{" "}
+            <span className="font-mono text-cream">{currentPage.toLocaleString()}</span>/
+            <span className="font-mono text-cream">{totalPages.toLocaleString()}</span>
+          </div>
+        ) : null}
+        <div
+          className={[
+            "flex flex-wrap items-start gap-2",
+            showSummary ? "lg:justify-end" : "w-full min-w-0",
+            integratedControls ? "items-center" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+        >
+          {integratedControls ? (
+            <div className="flex w-full min-w-0 items-center gap-2">
+              <UrlSearchBar
+                ref={searchRef}
+                hrefContext={hrefContext}
+                preserve={preserve}
+                initialQuery={initialQuery}
+                layout="inline"
+              />
+              <UrlExcludeBar
+                ref={hideRef}
+                hrefContext={hrefContext}
+                preserve={preserve}
+                initialHideSubIds={initialHideSubIds}
+                initialHideKw={initialHideKw}
+                subdomainOptions={subdomainOptions}
+                resolvedHiddenSubdomains={resolvedHiddenSubdomains}
+                variant="icon"
+              />
+            </div>
+          ) : (
+            <>
+              <UrlSearchBar
+                ref={searchRef}
+                hrefContext={hrefContext}
+                preserve={preserve}
+                initialQuery={initialQuery}
+              />
+              <UrlExcludeBar
+                ref={hideRef}
+                hrefContext={hrefContext}
+                preserve={preserve}
+                initialHideSubIds={initialHideSubIds}
+                initialHideKw={initialHideKw}
+                subdomainOptions={subdomainOptions}
+                resolvedHiddenSubdomains={resolvedHiddenSubdomains}
+              />
+            </>
+          )}
         </div>
       </div>
 

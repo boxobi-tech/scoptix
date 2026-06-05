@@ -156,11 +156,11 @@ export function Sidebar() {
           {
             title: "Categories",
             items: categories.map((c) => ({
-              href: `/findings?urlCategory=${encodeURIComponent(c.slug)}`,
+              href: `/categories/${encodeURIComponent(c.slug)}`,
               label: c.displayName,
               icon: categoryIcon(c.slug),
               match: (p: string, sp: URLSearchParams) =>
-                p.startsWith("/findings") && sp.get("urlCategory") === c.slug,
+                p === `/categories/${c.slug}` || p.startsWith(`/categories/${c.slug}/`),
             })),
           } satisfies NavSection,
         ]

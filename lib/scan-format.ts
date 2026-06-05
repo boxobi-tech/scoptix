@@ -81,3 +81,15 @@ export function formatScanDuration(
 export function shortScanId(id: string, len = 8) {
   return id.length > len ? id.slice(0, len) : id;
 }
+
+/** Last path segment of a URL (e.g. `report.pdf`). */
+export function urlPathFilename(urlText: string): string | null {
+  try {
+    const seg = new URL(urlText).pathname.split("/").filter(Boolean).pop();
+    return seg || null;
+  } catch {
+    const path = urlText.split(/[?#]/)[0] ?? urlText;
+    const seg = path.split("/").filter(Boolean).pop();
+    return seg || null;
+  }
+}

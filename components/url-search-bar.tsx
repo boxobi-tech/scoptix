@@ -9,7 +9,7 @@ import {
   parseQueryToBuilderRows,
   type SearchBuilderRow,
 } from "@/lib/url-search-query";
-import { buildUrlsTabHref, type UrlTabHrefContext, type UrlTabPreserve } from "@/lib/url-tab-params";
+import { buildUrlsTabHref, type UrlTabHrefContext, type UrlTabFilterParams } from "@/lib/url-tab-params";
 
 function IconSearch({ className }: { className?: string }) {
   return (
@@ -76,14 +76,16 @@ export type UrlSearchBarHandle = {
 
 type UrlSearchBarProps = {
   hrefContext: UrlTabHrefContext;
-  preserve: UrlTabPreserve;
+  preserve: UrlTabFilterParams;
   initialQuery: string;
+  layout?: "default" | "inline";
 };
 
 export const UrlSearchBar = forwardRef<UrlSearchBarHandle, UrlSearchBarProps>(function UrlSearchBar({
   hrefContext,
   preserve,
   initialQuery,
+  layout = "default",
 }, ref) {
   const router = useRouter();
   const dialogTitleId = useId();
@@ -152,10 +154,23 @@ export const UrlSearchBar = forwardRef<UrlSearchBarHandle, UrlSearchBarProps>(fu
   const showTooShortHint =
     initialQuery.trim().length > 0 && !filterApplied && !isStructuredSearchQuery(initialQuery);
 
+  const inline = layout === "inline";
+
   return (
-    <div className="flex flex-col items-end gap-2">
-      <form onSubmit={handleSimpleSubmit} className="flex flex-wrap items-center justify-end gap-2">
-        <div className="relative">
+    <div
+      className={
+        inline ? "flex min-w-0 flex-1 flex-col gap-2" : "flex flex-col items-end gap-2"
+      }
+    >
+      <form
+        onSubmit={handleSimpleSubmit}
+        className={
+          inline
+            ? "flex w-full min-w-0 flex-wrap items-center gap-2"
+            : "flex flex-wrap items-center justify-end gap-2"
+        }
+      >
+        <div className={inline ? "relative min-w-0 flex-1" : "relative"}>
           <IconSearch className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
           <input
             name="q"
@@ -163,7 +178,10 @@ export const UrlSearchBar = forwardRef<UrlSearchBarHandle, UrlSearchBarProps>(fu
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search URLs…"
             aria-label="Search URLs"
-            className="ui-input-field w-[min(100%,280px)] rounded-lg border border-line py-2 pl-8 pr-9 text-[12px] text-cream outline-none placeholder:text-muted focus:ring-1 focus:ring-accent/30"
+            className={[
+              "ui-input-field rounded-lg border border-line pl-8 pr-9 text-[12px] text-cream outline-none placeholder:text-muted focus:ring-1 focus:ring-accent/30",
+              inline ? "h-9 w-full min-w-0 py-0" : "w-[min(100%,280px)] py-2",
+            ].join(" ")}
           />
           <button
             type="button"
@@ -178,7 +196,10 @@ export const UrlSearchBar = forwardRef<UrlSearchBarHandle, UrlSearchBarProps>(fu
         </div>
         <button
           type="submit"
-          className="rounded-lg border border-line px-3 py-2 text-[12px] font-medium text-cream transition-colors hover:bg-[var(--nav-hover-bg)]"
+          className={[
+            "inline-flex shrink-0 items-center justify-center rounded-lg border border-line px-3 text-[12px] font-medium text-cream transition-colors hover:bg-[var(--nav-hover-bg)]",
+            inline ? "h-9 py-0" : "py-2",
+          ].join(" ")}
         >
           Search
         </button>
@@ -188,7 +209,10 @@ export const UrlSearchBar = forwardRef<UrlSearchBarHandle, UrlSearchBarProps>(fu
             onClick={handleClear}
             title="Clear search"
             aria-label="Clear search"
-            className="rounded-lg border border-line p-2 text-muted transition-colors hover:border-warn/40 hover:bg-warn/10 hover:text-warn"
+            className={[
+              "inline-flex shrink-0 items-center justify-center rounded-lg border border-line text-muted transition-colors hover:border-warn/40 hover:bg-warn/10 hover:text-warn",
+              inline ? "h-9 w-9 p-0" : "p-2",
+            ].join(" ")}
           >
             <IconX />
           </button>
@@ -196,7 +220,12 @@ export const UrlSearchBar = forwardRef<UrlSearchBarHandle, UrlSearchBarProps>(fu
       </form>
 
       {showTooShortHint && (
-        <p className="max-w-[min(100%,360px)] text-right text-[10px] text-warn">
+        <p
+          className={[
+            "text-[10px] text-warn",
+            inline ? "w-full" : "max-w-[min(100%,360px)] text-right",
+          ].join(" ")}
+        >
           Enter at least 3 characters for a simple search, or use Advanced for shorter terms.
         </p>
       )}

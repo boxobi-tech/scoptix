@@ -2,12 +2,16 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { PageSizeSelect } from "@/components/page-size-select";
 
-export const PAGE_SIZE_OPTIONS = [10, 25, 50, 75, 100] as const;
+export const PAGE_SIZE_OPTIONS = [10, 15, 25, 50, 75, 100] as const;
 export const DEFAULT_PAGE_SIZE = 10;
 
-export function normalizePageSize(v: string | null | undefined): number {
+export function normalizePageSize(
+  v: string | null | undefined,
+  fallback: number = DEFAULT_PAGE_SIZE,
+): number {
   const n = Number(v);
   if ((PAGE_SIZE_OPTIONS as readonly number[]).includes(n)) return n;
+  if ((PAGE_SIZE_OPTIONS as readonly number[]).includes(fallback)) return fallback;
   return DEFAULT_PAGE_SIZE;
 }
 
