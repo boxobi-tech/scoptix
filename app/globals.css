@@ -427,6 +427,10 @@ body {
     -webkit-backdrop-filter: blur(16px);
   }
 
+  [data-theme="dark"] .dashboard-range-menu {
+    background: rgba(16, 24, 28, 0.96);
+  }
+
   [data-theme="light-mist"] .dashboard-range-menu,
   [data-theme="scoptix"] .dashboard-range-menu {
     background: rgba(255, 255, 255, 0.97);

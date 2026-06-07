@@ -11,6 +11,8 @@ export function NewScanForm({ autoFocus = true }: { autoFocus?: boolean }) {
   const router = useRouter();
   const [domain, setDomain] = useState("");
   const [deepScan, setDeepScan] = useState(false);
+  const [skipListEnabled, setSkipListEnabled] = useState(false);
+  const [skipListText, setSkipListText] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -26,6 +28,14 @@ export function NewScanForm({ autoFocus = true }: { autoFocus?: boolean }) {
     setErr(null);
     try {
       const deepScanCategorySlugs = deepScan ? ["js"] : [];
+      const skipList = skipListEnabled
+        ? [...new Set(
+            skipListText
+              .split("\n")
+              .map((l) => l.trim().toLowerCase())
+              .filter(Boolean),
+          )]
+        : [];
       const r = await fetch("/api/quick-scan", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -33,6 +43,7 @@ export function NewScanForm({ autoFocus = true }: { autoFocus?: boolean }) {
           domain: trimmed,
           deepScan,
           deepScanCategorySlugs,
+          skipList,
         }),
       });
       const j = await r.json().catch(() => null);
@@ -77,6 +88,37 @@ export function NewScanForm({ autoFocus = true }: { autoFocus?: boolean }) {
           </div>
         </div>
       </label>
+
+      <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-line px-4 py-3 transition-colors hover:bg-[var(--nav-hover-bg)]">
+        <input
+          type="checkbox"
+          checked={skipListEnabled}
+          onChange={(e) => setSkipListEnabled(e.target.checked)}
+          className="accent-accent"
+        />
+        <div>
+          <div className="text-[13px] text-cream">Skip List</div>
+          <div className="text-[11px] text-muted">
+            Exclude specific subdomains from recursive discovery. Only applies to root domain scans.
+          </div>
+        </div>
+      </label>
+
+      {skipListEnabled ? (
+        <div>
+          <textarea
+            value={skipListText}
+            onChange={(e) => setSkipListText(e.target.value)}
+            placeholder={"x.example.com\nz.example.com"}
+            rows={4}
+            spellCheck={false}
+            className="ui-input-field w-full rounded-xl border border-line px-4 py-3 font-mono text-[13px] text-cream placeholder:text-muted outline-none focus:ring-2 focus:ring-accent/30 resize-y"
+          />
+          <div className="mt-1.5 text-[11px] text-muted">
+            One hostname per line.
+          </div>
+        </div>
+      ) : null}
 
       {err ? (
         <div className="rounded-xl border border-warn/30 bg-warn/5 px-4 py-3 text-[12px] text-warn">

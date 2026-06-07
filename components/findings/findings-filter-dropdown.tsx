@@ -143,6 +143,7 @@ export function FindingsFilterDropdown({
             <input
               ref={inputRef}
               type="text"
+              role="combobox"
               disabled={disabled}
               value={inputValue}
               placeholder={placeholder}

@@ -38,7 +38,7 @@ export function ScanDetailHeader({
   const completed = STATUS_COMPLETED.has(status);
 
   return (
-    <header className="scx-scan-header shrink-0">
+    <header className="scx-scan-header relative z-10 shrink-0">
       <div className="flex items-stretch justify-between gap-x-4 gap-y-3">
         <div className="min-w-0 flex-1">
           <div className="mb-0.5 text-[11px] font-bold text-muted">Scan Summary</div>

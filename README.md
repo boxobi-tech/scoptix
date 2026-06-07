@@ -12,7 +12,8 @@ Data is currently sourced from **VirusTotal** and the Internet Archive's **Wayba
 
 * **Asset Discovery:** Discover subdomains, URLs, IP addresses, and archived web assets from multiple external data sources. IP resolutions come from VirusTotal passive DNS (hostname ↔ IP history for the apex and discovered subdomains). Each scan keeps an observed IP list for that run; the target view aggregates the same addresses across all scans with hostname timelines and historical resolution detail.
 * **Exposure Discovery:** Identify potentially exposed credentials, API keys, tokens, cloud secrets, and configuration artifacts across discovered assets using customizable detection rules.
-* **Content Analysis:** Automatically discover potentially sensitive files, including documents, archives, binaries, backups, and other analyst-defined categories.
+* **Asset Categorization:** Automatically group discovered URLs into extension categories you define in Settings—create categories and map pathname suffixes (e.g. `.pdf`, `.js`, `.zip`) so assets are organized for review.
+* **Deep Scan:** Optionally download JavaScript files when starting a scan and analyze their contents against your detection rules, in addition to the URL-string checks applied to every URL.
 * **Endpoint Discovery:** Explore parameters, application endpoints, authentication-related resources, and other security-relevant application assets.
 * **Scan Comparison:** Track changes across scans and quickly identify newly discovered subdomains, URLs, IP addresses, archived assets, and exposure findings.
 
@@ -20,7 +21,7 @@ Data is currently sourced from **VirusTotal** and the Internet Archive's **Wayba
 
 ![Historical hostnames — passive DNS timeline per IP](./img/3-historicalhostnames.png)
 
-![All findings — exposure and content analysis results](./img/4-all-findings.png)
+![All findings — exposure and detection results](./img/4-all-findings.png)
 
 -----
 

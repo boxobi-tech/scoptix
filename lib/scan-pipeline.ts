@@ -37,10 +37,10 @@ type ScanConfig = {
   deepScan?: boolean;
   deepScanCategorySlugs?: string[];
   expandSubdomains?: boolean;
-  maxSubdomains?: number;
   enginesEnabled?: EngineProvider[];
   inputType?: string;
   inputHostname?: string;
+  skipList?: string[];
 };
 
 type UrlInput = { url: string; date: Date | null };
@@ -622,8 +622,10 @@ export async function runScanJob(prisma: PrismaClient, redis: Redis, scanJobId: 
       const siblingSubdomains = new Set(domainSiblingsFromReport(apexReport));
       const urlHostSubdomains = new Set(subdomainsFromUndetectedUrls(apexReport, targetNorm));
       const layer1 = discoverSubdomainsFromReport(apexReport, targetNorm);
+      const skipSet = new Set((cfg.skipList ?? []).map(h => h.toLowerCase()));
 
       for (const h of layer1) {
+        if (skipSet.has(h)) continue;
         await ensureSubdomain(prisma, target.id, h, {
           vtSubdomainList: listSubdomains.has(h),
           vtDomainSiblings: siblingSubdomains.has(h),
@@ -631,9 +633,8 @@ export async function runScanJob(prisma: PrismaClient, redis: Redis, scanJobId: 
         });
       }
 
-      const maxSubdomains = Math.max(1, Math.min(50_000, Number(cfg.maxSubdomains ?? 2000)));
-      const seen = new Set<string>(layer1);
-      const queue: string[] = [...layer1];
+      const seen = new Set<string>(layer1.filter(h => !skipSet.has(h)));
+      const queue: string[] = [...seen];
 
       await prisma.scanJob.update({
         where: { id: scanJobId },
@@ -666,7 +667,7 @@ export async function runScanJob(prisma: PrismaClient, redis: Redis, scanJobId: 
 
         for (const h of discovered) {
           if (seen.has(h)) continue;
-          if (seen.size >= maxSubdomains) break;
+          if (skipSet.has(h)) continue;
           seen.add(h);
           queue.push(h);
           await ensureSubdomain(prisma, target.id, h, {
@@ -684,7 +685,7 @@ export async function runScanJob(prisma: PrismaClient, redis: Redis, scanJobId: 
           });
         }
 
-        if (seen.size >= maxSubdomains) break;
+
       }
       vtSubdomains = Array.from(seen);
     }

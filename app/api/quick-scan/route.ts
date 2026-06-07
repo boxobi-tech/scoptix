@@ -12,6 +12,7 @@ const bodySchema = z.object({
   domain: z.string().min(3).max(255),
   deepScan: z.boolean().optional(),
   deepScanCategorySlugs: z.array(z.string()).optional(),
+  skipList: z.array(z.string()).optional(),
 });
 
 /**
@@ -86,10 +87,10 @@ export async function POST(req: Request) {
         deepScan: Boolean(parsed.data.deepScan),
         deepScanCategorySlugs: parsed.data.deepScanCategorySlugs ?? [],
         expandSubdomains,
-        maxSubdomains: expandSubdomains ? 2000 : 1,
         enginesEnabled: activeEngines,
         inputHostname: normalized, // store the original input for the pipeline
         inputType,
+        skipList: parsed.data.skipList ?? [],
       },
     },
   });

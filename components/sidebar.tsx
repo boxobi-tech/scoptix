@@ -115,7 +115,7 @@ export function Sidebar({ categories }: { categories: SidebarExtensionCategory[]
               href: `/categories/${encodeURIComponent(c.slug)}`,
               label: c.displayName,
               icon: getCategoryIconForCategory(c.iconKey, c.slug),
-              match: (p: string, sp: URLSearchParams) =>
+              match: (p: string) =>
                 p === `/categories/${c.slug}` || p.startsWith(`/categories/${c.slug}/`),
             })),
           } satisfies NavSection,

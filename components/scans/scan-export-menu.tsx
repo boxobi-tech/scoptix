@@ -79,7 +79,7 @@ export function ScanExportMenu({
   }
 
   return (
-    <div ref={rootRef} className="relative shrink-0">
+    <div ref={rootRef} className="relative z-30 shrink-0">
       <button
         type="button"
         aria-expanded={open}
@@ -99,7 +99,7 @@ export function ScanExportMenu({
         <ul
           id={listId}
           role="menu"
-          className="dashboard-range-menu absolute right-0 top-full z-20 mt-1.5 min-w-[15rem] overflow-hidden rounded-lg border border-line py-0.5 shadow-lift"
+          className="dashboard-range-menu absolute right-0 top-full z-50 mt-1.5 min-w-[15rem] overflow-hidden rounded-lg border border-line py-0.5 shadow-lift"
         >
           {options.map((option) => (
             <li key={option.type} role="none">
