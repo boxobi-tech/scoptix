@@ -346,6 +346,27 @@ body {
     color: color-mix(in srgb, var(--color-accent) 78%, var(--color-cream));
   }
 
+  .scx-subdomain-url-badge {
+    @apply relative -top-px shrink-0 rounded border px-1 py-0 text-[8px] font-semibold uppercase tracking-wide leading-none;
+  }
+
+  .scx-subdomain-url-badge--has {
+    border-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
+    background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+    color: var(--color-accent);
+  }
+
+  [data-theme="dark"] .scx-subdomain-url-badge--has {
+    border-width: 0.5px;
+    border-color: color-mix(in srgb, var(--color-accent) 14%, transparent);
+    background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+    color: color-mix(in srgb, var(--color-accent) 72%, var(--color-cream));
+  }
+
+  .scx-subdomain-url-badge--no {
+    @apply border-line bg-black/10 text-muted;
+  }
+
   .scx-metric-icon-badge--success {
     background: color-mix(in srgb, var(--color-accent) 18%, transparent);
     color: var(--color-accent);

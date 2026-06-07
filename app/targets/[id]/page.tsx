@@ -74,6 +74,11 @@ function countLabel(value: number | null) {
   return value == null ? "—" : value.toLocaleString();
 }
 
+function dualCountLabel(numerator: number | null, denominator: number | null) {
+  if (numerator == null || denominator == null) return "—";
+  return `${numerator.toLocaleString()} / ${denominator.toLocaleString()}`;
+}
+
 function targetScanListMetrics(scan: {
   observedVersion: number | null;
   observedUrlCount: number | null;
@@ -367,17 +372,19 @@ export default async function TargetDetailPage({
       return {
         id: s.id,
         hostnameNormalized: s.hostnameNormalized,
-        hasUrlBadge: subAll ? (
-          s.observedUrls && s.observedUrls.length > 0 ? (
-            <span className="shrink-0 rounded bg-accent/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-accent">
-              Has URL
+        hasUrlBadge: subAll ? (() => {
+          const hasUrl = s.observedUrls && s.observedUrls.length > 0;
+          return (
+            <span
+              className={[
+                "scx-subdomain-url-badge",
+                hasUrl ? "scx-subdomain-url-badge--has" : "scx-subdomain-url-badge--no",
+              ].join(" ")}
+            >
+              {hasUrl ? "Has URL" : "No URL"}
             </span>
-          ) : (
-            <span className="shrink-0 rounded bg-line/50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-muted">
-              No URL
-            </span>
-          )
-        ) : undefined,
+          );
+        })() : undefined,
         ipCount: ipCountsByHostname.get(s.hostnameNormalized) || 0,
         latestIp: latest?.ipResolution.ipAddress ?? null,
         lastResolvedAt: latest?.lastResolvedAt ?? null,
@@ -451,7 +458,7 @@ export default async function TargetDetailPage({
       label: "Subdomains",
       icon: IconGlobe,
       href: tabHref("subdomains"),
-      count: targetTabCount(target.cachedSubdomainCount),
+      count: dualCountLabel(subdomainWithUrlCount, target.cachedSubdomainCount),
     },
     {
       key: "urls",

@@ -63,13 +63,18 @@ Real-world examples discussed in these presentations include:
 - Node.js (LTS recommended) and npm
 - Git (to clone the repository)
 - **Either** Docker (recommended for Postgres + Redis) **or** your own PostgreSQL and Redis instances
+- One or more [VirusTotal](https://www.virustotal.com/) API keys (required for VT-powered discovery)
 
 **Tested platform:** Ubuntu 26.04 (Docker and local dev workflows above). Other Linux distributions and macOS may work but are not routinely verified.
 
-Optional:
+Optional: SOCKS proxy (if outbound API or deep-fetch traffic must route through a proxy)
 
-- One or more [VirusTotal](https://www.virustotal.com/) API keys (required for VT-powered discovery)
-- SOCKS proxy (if outbound API or deep-fetch traffic must route through a proxy)
+> **Note on VirusTotal API Keys:**
+>
+> Community (Free) VirusTotal API keys are fully supported, although throughput is limited by VirusTotal's public API quotas (≈4 requests/minute, ≈500 requests/day, and ≈15,500 requests/month per key). If faster scans are needed, additional API keys can be configured, and SCOPTIX will automatically distribute requests across them. For example:
+>
+> * 1 API key ≈ 4 requests/minute
+> * 4 API keys ≈ 16 requests/minute
 
 ## Getting started
 

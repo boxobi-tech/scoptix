@@ -1107,10 +1107,8 @@ export default async function ScanObservedPage({
                         const badge = (
                           <span
                             className={[
-                              "relative -top-px shrink-0 rounded border px-1 py-0 text-[8px] font-semibold uppercase tracking-wide leading-none",
-                              hasUrl
-                                ? "border-accent/40 bg-accent/10 text-accent"
-                                : "border-line bg-black/10 text-muted",
+                              "scx-subdomain-url-badge",
+                              hasUrl ? "scx-subdomain-url-badge--has" : "scx-subdomain-url-badge--no",
                             ].join(" ")}
                           >
                             {hasUrl ? "Has URL" : "No URL"}
