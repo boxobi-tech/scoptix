@@ -78,7 +78,11 @@ export default async function DashboardPage({
                 siblingParams={rangeParams}
               />
             </div>
-            <DashboardApiKeyUsageChart rows={charts.apiKeyUsage} perKeyDailyCap={charts.perKeyDailyCap} />
+            <div className="xl:relative">
+              <div className="h-full xl:absolute xl:inset-0">
+                <DashboardApiKeyUsageChart rows={charts.apiKeyUsage} perKeyDailyCap={charts.perKeyDailyCap} />
+              </div>
+            </div>
           </div>
         </div>
       </main>

@@ -145,7 +145,7 @@ export function ScanHistoryPanel({ scans }: { scans: ScanHistoryRow[] }) {
                     className="min-w-0 flex-1 transition-colors hover:text-accent"
                   >
                     <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted">
-                      Target
+                      Domain / Subdomain
                     </div>
                     <div className="truncate font-mono text-[12px] text-cream">
                       {scan.targetDomain}
@@ -154,7 +154,7 @@ export function ScanHistoryPanel({ scans }: { scans: ScanHistoryRow[] }) {
                   <button
                     type="button"
                     onClick={() => openDeleteDialog([scan.id])}
-                    className="rounded-lg border border-line p-2 text-muted transition-colors hover:border-warn/40 hover:bg-warn/10 hover:text-warn"
+                    className="rounded-md p-1.5 text-muted transition-colors hover:bg-warn/10 hover:text-warn"
                     aria-label={`Delete scan for ${scan.targetDomain}`}
                   >
                     <IconTrash className="size-3.5" />
@@ -224,7 +224,7 @@ export function ScanHistoryPanel({ scans }: { scans: ScanHistoryRow[] }) {
               className="size-3.5 accent-accent"
             />
           </div>
-          <div className="min-w-0 truncate">Target</div>
+          <div className="min-w-0 truncate">Domain / Subdomain</div>
           <div className={STATUS_COL_CLASS}>
             <span className={`${STATUS_BOX_CLASS} text-muted`}>Status</span>
           </div>
@@ -300,7 +300,7 @@ export function ScanHistoryPanel({ scans }: { scans: ScanHistoryRow[] }) {
                 <button
                   type="button"
                   onClick={() => openDeleteDialog([scan.id])}
-                  className="rounded-lg border border-line p-1.5 text-muted transition-colors hover:border-warn/40 hover:bg-warn/10 hover:text-warn"
+                  className="rounded-md p-1 text-muted transition-colors hover:bg-warn/10 hover:text-warn"
                   aria-label={`Delete scan for ${scan.targetDomain}`}
                 >
                   <IconTrash className="size-3.5" />

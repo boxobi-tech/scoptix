@@ -3,8 +3,21 @@ import { NewScanDialog } from "@/components/new-scan-dialog";
 import { TargetsListHeader } from "@/components/targets/targets-list-header";
 import { formatScanDateTime } from "@/lib/scan-format";
 import { prisma } from "@/lib/prisma";
+import { TablePagination, normalizePageSize } from "@/components/table-pagination";
 
 export const dynamic = "force-dynamic";
+
+function asPosInt(v: string | null | undefined, fallback: number) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(1, Math.floor(n));
+}
+
+function sp(v: string | string[] | undefined): string {
+  if (typeof v === "string") return v;
+  if (Array.isArray(v)) return v[0] ?? "";
+  return "";
+}
 
 /** Domain column fixed — do not change. Other columns sized for headers + large counts. */
 const TARGETS_TABLE_GRID_CLASS =
@@ -130,10 +143,27 @@ function TargetsTableRowMobile({ target }: { target: TargetInventoryRow }) {
   );
 }
 
-export default async function TargetsPage() {
+export default async function TargetsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const rawSp = (await searchParams) ?? {};
+  const page = asPosInt(sp(rawSp.page) || null, 1);
+  const perPage = normalizePageSize(sp(rawSp.perPage) || null, 15);
+  const q = sp(rawSp.q);
+
+  const searchFilter = q ? { domainNormalized: { contains: q } } : {};
+
+  const totalTargets = await prisma.targetDomain.count({ where: searchFilter });
+  const totalPages = Math.max(1, Math.ceil(totalTargets / perPage));
+  const safePage = Math.min(page, totalPages);
+
   const targetsRaw = await prisma.targetDomain.findMany({
+    where: searchFilter,
     orderBy: { updatedAt: "desc" },
-    take: 200,
+    skip: (safePage - 1) * perPage,
+    take: perPage,
     include: { _count: { select: { scanJobs: true } } },
   });
 
@@ -158,7 +188,7 @@ export default async function TargetsPage() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <TargetsListHeader targetCount={targets.length} />
+      <TargetsListHeader targetCount={totalTargets} initialQuery={q} />
 
       <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
         <div>
@@ -195,6 +225,14 @@ export default async function TargetsPage() {
                     <TargetsTableRowMobile key={t.id} target={t} />
                   ))}
                 </div>
+                <TablePagination
+                  currentPage={safePage}
+                  totalPages={totalPages}
+                  totalItems={totalTargets}
+                  perPage={perPage}
+                  basePath="/targets"
+                  fixedParams={q ? { q } : {}}
+                />
               </>
             )}
           </div>

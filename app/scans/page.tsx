@@ -4,6 +4,7 @@ import { NewScanDialog } from "@/components/new-scan-dialog";
 import { ScanHistoryPanel } from "@/components/scans/scan-history-panel";
 import { ScansListHeader } from "@/components/scans/scans-list-header";
 import { prisma } from "@/lib/prisma";
+import { TablePagination, normalizePageSize } from "@/components/table-pagination";
 import { countScanObservedFromDb } from "@/lib/scan-observed-counts";
 import { formatScanDateTime } from "@/lib/scan-format";
 
@@ -24,24 +25,59 @@ function formatSnapshotUrlProgress(urlCount: number) {
   return `${urlCount.toLocaleString()}/${urlCount.toLocaleString()}`;
 }
 
-export default async function ScansPage() {
-  const scans = await prisma.scanJob.findMany({
+function asPosInt(v: string | null | undefined, fallback: number) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(1, Math.floor(n));
+}
+
+function sp(v: string | string[] | undefined): string {
+  if (typeof v === "string") return v;
+  if (Array.isArray(v)) return v[0] ?? "";
+  return "";
+}
+
+export default async function ScansPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const rawSp = (await searchParams) ?? {};
+  const page = asPosInt(sp(rawSp.page) || null, 1);
+  const perPage = normalizePageSize(sp(rawSp.perPage) || null, 15);
+  const q = sp(rawSp.q);
+
+  const searchFilter = q ? { targetDomain: { domainNormalized: { contains: q } } } : {};
+
+  const activeScans = await prisma.scanJob.findMany({
+    where: {
+      status: { in: [ScanJobStatus.RUNNING, ScanJobStatus.QUEUED] },
+      ...searchFilter,
+    },
     orderBy: { createdAt: "desc" },
-    take: 50,
-    include: {
-      targetDomain: true,
+    include: { targetDomain: true },
+  });
+
+  const totalHistoryScans = await prisma.scanJob.count({
+    where: {
+      status: { notIn: [ScanJobStatus.RUNNING, ScanJobStatus.QUEUED] },
+      ...searchFilter,
     },
   });
-  const activeScans = scans.filter(
-    (scan) =>
-      scan.status === ScanJobStatus.RUNNING ||
-      scan.status === ScanJobStatus.QUEUED,
-  );
-  const historyScans = scans.filter(
-    (scan) =>
-      scan.status !== ScanJobStatus.RUNNING &&
-      scan.status !== ScanJobStatus.QUEUED,
-  );
+
+  const totalPages = Math.max(1, Math.ceil(totalHistoryScans / perPage));
+  const safePage = Math.min(page, totalPages);
+
+  const historyScans = await prisma.scanJob.findMany({
+    where: {
+      status: { notIn: [ScanJobStatus.RUNNING, ScanJobStatus.QUEUED] },
+      ...searchFilter,
+    },
+    orderBy: { createdAt: "desc" },
+    skip: (safePage - 1) * perPage,
+    take: perPage,
+    include: { targetDomain: true },
+  });
 
   const snapshotByScanId = new Map(
     (
@@ -74,7 +110,7 @@ export default async function ScansPage() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <ScansListHeader activeCount={activeScans.length} historyCount={historyScans.length} />
+      <ScansListHeader activeCount={activeScans.length} historyCount={totalHistoryScans} initialQuery={q} />
 
       <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
         <div className="space-y-6">
@@ -119,7 +155,17 @@ export default async function ScansPage() {
                 </div>
               </div>
             ) : (
-              <ScanHistoryPanel scans={historyRows} />
+              <>
+                <ScanHistoryPanel scans={historyRows} />
+                <TablePagination
+                  currentPage={safePage}
+                  totalPages={totalPages}
+                  totalItems={totalHistoryScans}
+                  perPage={perPage}
+                  basePath="/scans"
+                  fixedParams={q ? { q } : {}}
+                />
+              </>
             )}
           </div>
         </div>

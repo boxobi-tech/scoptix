@@ -2,11 +2,14 @@ import { NewScanDialog } from "@/components/new-scan-dialog";
 import { TopBarControls } from "@/components/top-bar-controls";
 import { IconGlobe } from "@/components/ui-icons";
 
+import { GlobalSearchBar } from "@/components/global-search-bar";
+
 type TargetsListHeaderProps = {
   targetCount: number;
+  initialQuery?: string;
 };
 
-export function TargetsListHeader({ targetCount }: TargetsListHeaderProps) {
+export function TargetsListHeader({ targetCount, initialQuery = "" }: TargetsListHeaderProps) {
   return (
     <header className="scx-scan-header shrink-0">
       <div className="flex items-stretch justify-between gap-x-4 gap-y-3">
@@ -33,6 +36,7 @@ export function TargetsListHeader({ targetCount }: TargetsListHeaderProps) {
           <TopBarControls compact />
 
           <div className="flex flex-wrap items-center justify-end gap-2">
+            <GlobalSearchBar initialQuery={initialQuery} placeholder="Search domains..." basePath="/targets" />
             <NewScanDialog
               buttonClassName="shadow-clay inline-flex origin-bottom-right items-center justify-center rounded-lg bg-gradient-to-r from-accent to-accent-dim px-4 py-2 text-[12px] font-semibold text-void transition-transform hover:scale-[1.02]"
             />

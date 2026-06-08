@@ -47,7 +47,7 @@ export function DashboardFindingsActivityChart({
   const hasActivity = hasDiscoveryActivity(points);
 
   return (
-    <div className="glass-panel overflow-visible rounded-2xl p-5 md:p-6">
+    <div className="glass-panel flex h-full flex-col overflow-visible rounded-2xl p-5 md:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-accent">
@@ -70,11 +70,11 @@ export function DashboardFindingsActivityChart({
       </div>
 
       {!hasActivity ? (
-        <div className="mt-8 rounded-xl border border-dashed border-line px-4 py-10 text-center text-[12px] text-muted">
+        <div className="mt-8 flex flex-1 items-center justify-center rounded-xl border border-dashed border-line px-4 py-10 text-center text-[12px] text-muted">
           {activityEmptyLabel(range, "findings or subdomains")}
         </div>
       ) : (
-        <div className="relative z-10 overflow-visible">
+        <div className="relative z-10 flex-1 overflow-visible">
           <DashboardDiscoveryAreaChart points={points} />
         </div>
       )}
@@ -135,7 +135,7 @@ export function DashboardApiKeyUsageChart({
           </Link>
         </div>
       ) : (
-        <div className="mt-5 space-y-3">
+        <div className="mt-5 min-h-0 flex-1 space-y-3 overflow-y-auto pr-2 sm:max-h-[300px] xl:max-h-none">
           {rows.map((row) => {
             const pct = Math.min(100, Math.round((row.usage / perKeyDailyCap) * 100));
             const atCap = row.usage >= perKeyDailyCap;
