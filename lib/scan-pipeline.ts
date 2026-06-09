@@ -817,92 +817,101 @@ async function persistIpResolutions(
 ) {
   if (ipMap.size === 0) return;
 
-  await prisma.$transaction(async (tx) => {
-    let observedCount = 0;
-    
-    for (const [ipAddress, hostMap] of ipMap) {
-      let latestResolvedAt = new Date(0);
-      let latestSeenBy = "";
-      for (const [hostname, lastResolved] of hostMap) {
-        if (lastResolved > latestResolvedAt) {
-          latestResolvedAt = lastResolved;
-          latestSeenBy = hostname;
+  const entries = Array.from(ipMap.entries());
+  const IP_BATCH_SIZE = 50;
+  let observedCount = 0;
+
+  for (let i = 0; i < entries.length; i += IP_BATCH_SIZE) {
+    const batch = entries.slice(i, i + IP_BATCH_SIZE);
+
+    await prisma.$transaction(async (tx) => {
+      for (const [ipAddress, hostMap] of batch) {
+        let latestResolvedAt = new Date(0);
+        let latestSeenBy = "";
+        for (const [hostname, lastResolved] of hostMap) {
+          if (lastResolved > latestResolvedAt) {
+            latestResolvedAt = lastResolved;
+            latestSeenBy = hostname;
+          }
         }
-      }
 
-      const existing = await tx.ipResolution.findUnique({
-        where: { targetDomainId_ipAddress: { targetDomainId, ipAddress } },
-        select: { id: true, latestResolvedAt: true }
-      });
-
-      let globalIpId;
-      if (existing) {
-        globalIpId = existing.id;
-        const newDate = latestResolvedAt > existing.latestResolvedAt ? latestResolvedAt : existing.latestResolvedAt;
-        const newHost = latestResolvedAt > existing.latestResolvedAt ? latestSeenBy : undefined;
-        
-        await tx.ipResolution.update({
-          where: { id: existing.id },
-          data: {
-            latestResolvedAt: newDate,
-            ...(newHost ? { latestSeenBy: newHost } : {}),
-          }
+        const existing = await tx.ipResolution.findUnique({
+          where: { targetDomainId_ipAddress: { targetDomainId, ipAddress } },
+          select: { id: true, latestResolvedAt: true }
         });
-      } else {
-        const created = await tx.ipResolution.create({
-          data: {
-            targetDomainId,
-            ipAddress,
-            latestResolvedAt,
-            latestSeenBy,
-            hostnameCount: hostMap.size,
-          }
-        });
-        globalIpId = created.id;
-      }
 
-      for (const [hostname, lastResolved] of hostMap) {
-        await tx.ipResolutionSighting.upsert({
-          where: {
-            ipResolutionId_hostnameNormalized: {
+        let globalIpId;
+        if (existing) {
+          globalIpId = existing.id;
+          const newDate = latestResolvedAt > existing.latestResolvedAt ? latestResolvedAt : existing.latestResolvedAt;
+          const newHost = latestResolvedAt > existing.latestResolvedAt ? latestSeenBy : undefined;
+          
+          await tx.ipResolution.update({
+            where: { id: existing.id },
+            data: {
+              latestResolvedAt: newDate,
+              ...(newHost ? { latestSeenBy: newHost } : {}),
+            }
+          });
+        } else {
+          const created = await tx.ipResolution.create({
+            data: {
+              targetDomainId,
+              ipAddress,
+              latestResolvedAt,
+              latestSeenBy,
+              hostnameCount: hostMap.size,
+            }
+          });
+          globalIpId = created.id;
+        }
+
+        for (const [hostname, lastResolved] of hostMap) {
+          await tx.ipResolutionSighting.upsert({
+            where: {
+              ipResolutionId_hostnameNormalized: {
+                ipResolutionId: globalIpId,
+                hostnameNormalized: hostname,
+              }
+            },
+            create: {
               ipResolutionId: globalIpId,
+              scanJobId,
               hostnameNormalized: hostname,
+              lastResolvedAt: lastResolved,
+            },
+            update: {
+              lastResolvedAt: lastResolved,
+              scanJobId,
+            }
+          });
+        }
+
+        await tx.scanObservedIpResolution.upsert({
+          where: {
+            scanJobId_ipAddress: {
+              scanJobId,
+              ipAddress,
             }
           },
           create: {
+            scanJobId,
+            targetDomainId,
             ipResolutionId: globalIpId,
-            scanJobId,
-            hostnameNormalized: hostname,
-            lastResolvedAt: lastResolved,
-          },
-          update: {
-            lastResolvedAt: lastResolved,
-            scanJobId,
-          }
-        });
-      }
-
-      await tx.scanObservedIpResolution.upsert({
-        where: {
-          scanJobId_ipAddress: {
-            scanJobId,
             ipAddress,
-          }
-        },
-        create: {
-          scanJobId,
-          targetDomainId,
-          ipResolutionId: globalIpId,
-          ipAddress,
-          lastResolvedAt: latestResolvedAt,
-          reportedByHostname: latestSeenBy,
-        },
-        update: {}
-      });
-      
-      observedCount++;
-    }
+            lastResolvedAt: latestResolvedAt,
+            reportedByHostname: latestSeenBy,
+          },
+          update: {}
+        });
+        
+        observedCount++;
+      }
+    }, { timeout: 30000 });
+  }
 
+  /* Counter updates — lightweight separate transaction after all batches */
+  await prisma.$transaction(async (tx) => {
     await tx.$executeRaw`
       UPDATE "ip_resolution" ir
       SET "hostname_count" = (
@@ -925,5 +934,5 @@ async function persistIpResolutions(
       where: { id: scanJobId },
       data: { observedIpCount: observedCount }
     });
-  }, { timeout: 30000 });
+  });
 }
