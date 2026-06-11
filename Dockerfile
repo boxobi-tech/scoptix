@@ -12,6 +12,9 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN mkdir -p public
 RUN npx prisma generate
+# Placeholder so PrismaClient can be constructed during static prerender at build
+# time. The real DATABASE_URL is injected at runtime by docker-compose (app/worker).
+ENV DATABASE_URL="postgresql://build:build@localhost:5432/build?schema=public"
 RUN npm run build
 
 FROM node:20-alpine AS runner

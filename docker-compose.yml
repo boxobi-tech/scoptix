@@ -12,7 +12,7 @@ name: scoptix
 services:
   postgres:
     image: postgres:16
-    container_name: scoptix_postgres
+    container_name: ${STACK_PREFIX:-scoptix}_postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-recon}
@@ -35,7 +35,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: scoptix_redis
+    container_name: ${STACK_PREFIX:-scoptix}_redis
     restart: unless-stopped
     ports:
       - "${REDIS_PORT:-6379}:6379"
@@ -50,7 +50,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.setup
-    container_name: scoptix_setup
+    container_name: ${STACK_PREFIX:-scoptix}_setup
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-recon}:${POSTGRES_PASSWORD:-recon}@postgres:5432/${POSTGRES_DB:-recon}?schema=public
     env_file:
@@ -66,7 +66,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: scoptix_app
+    container_name: ${STACK_PREFIX:-scoptix}_app
     restart: unless-stopped
     ports:
       - "${APP_PORT:-3000}:3000"
@@ -104,7 +104,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: scoptix_worker
+    container_name: ${STACK_PREFIX:-scoptix}_worker
     restart: unless-stopped
     command: ["npx", "tsx", "workers/scan-worker.ts"]
     environment:
@@ -124,4 +124,4 @@ services:
 
 volumes:
   scoptix_pg:
-    name: scoptix_pg
+    name: ${STACK_PREFIX:-scoptix}_pg

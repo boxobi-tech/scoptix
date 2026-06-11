@@ -23,6 +23,11 @@ export const metadata: Metadata = {
   description: "Modular recon console (VT-first)",
 };
 
+// The app is fully DB-backed; the shared AppShell queries Prisma. Mark the root
+// segment dynamic so no route (including the built-in /_not-found) is prerendered
+// against a database at build time.
+export const dynamic = "force-dynamic";
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning className={`${plexSans.variable} ${plexMono.variable}`}>
